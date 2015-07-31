@@ -26,6 +26,18 @@
 
 #include <linux/prefetch.h>
 
+static inline void _rt2x00_desc_read(__le32 *desc, const u8 word, __le32 *value)
+{
+	*value = desc[word];
+}
+
+static inline void rt2x00_desc_read(__le32 *desc, const u8 word, u32 *value)
+{
+	__le32 tmp;
+	_rt2x00_desc_read(desc, word, &tmp);
+	*value = le32_to_cpu(tmp);
+}
+
 /**
  * DOC: Entry frame size
  *
@@ -485,6 +497,11 @@ struct data_queue {
 
 	unsigned short usb_endpoint;
 	unsigned short usb_maxpacket;
+
+
+	unsigned int TxCpuIdx;
+	unsigned int TxDmaIdx;
+	unsigned int TxSwFreeIdx;
 };
 
 /**

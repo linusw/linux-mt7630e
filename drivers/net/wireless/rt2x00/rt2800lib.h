@@ -229,4 +229,11 @@ void rt2800_get_txwi_rxwi_size(struct rt2x00_dev *rt2x00dev,
 			       unsigned short *txwi_size,
 			       unsigned short *rxwi_size);
 
+void mt7630_show_rf(struct rt2x00_dev *rt2x00dev);
+void mt7630_show_bbp(struct rt2x00_dev *rt2x00dev);
+void MT76x0_WLAN_ChipOnOff(
+	struct rt2x00_dev *rt2x00dev,
+	int bOn,
+	int bResetWLAN);
+
 #endif /* RT2800LIB_H */

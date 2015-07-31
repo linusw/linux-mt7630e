@@ -29,6 +29,10 @@
 
 #include "rt2x00.h"
 #include "rt2x00pci.h"
+extern void MT76x0_WLAN_ChipOnOff(
+	struct rt2x00_dev *rt2x00dev,
+	int bOn,
+	int bResetWLAN);
 
 /*
  * PCI driver handlers.
@@ -136,9 +140,24 @@ int rt2x00pci_probe(struct pci_dev *pci_dev, const struct rt2x00_ops *ops)
 	pci_read_config_word(pci_dev, PCI_DEVICE_ID, &chip);
 	rt2x00dev->chip.rt = chip;
 
+	if (rt2x00_rt(rt2x00dev, MT7630))
+		MT76x0_WLAN_ChipOnOff(rt2x00dev, 1, 1);
+	
 	retval = rt2x00lib_probe_dev(rt2x00dev);
 	if (retval)
 		goto exit_free_reg;
+
+	if (rt2x00_rt(rt2x00dev, MT7630))
+	{
+		rt2x00dev->TXWISize=20;
+		rt2x00dev->bscan=0;
+
+		NdisAllocateSpinLock(rt2x00dev, &rt2x00dev->CtrlRingLock);
+		NdisAllocateSpinLock(rt2x00dev, &rt2x00dev->CalLock);
+		retval = RTMPAllocTxRxRingMemory(rt2x00dev);
+		if (retval != NDIS_STATUS_SUCCESS)
+			goto exit_free_reg;
+	}
 
 	return 0;
 

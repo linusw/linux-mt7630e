@@ -164,6 +164,8 @@ int rt2x00mmio_initialize(struct rt2x00_dev *rt2x00dev)
 			goto exit;
 	}
 
+	rt2x00mmio_register_write(rt2x00dev, 0x020c, 0xFFFFFFFF);
+#if 0
 	/*
 	 * Register interrupt handler.
 	 */
@@ -175,7 +177,7 @@ int rt2x00mmio_initialize(struct rt2x00_dev *rt2x00dev)
 			   rt2x00dev->irq, status);
 		goto exit;
 	}
-
+#endif
 	return 0;
 
 exit:

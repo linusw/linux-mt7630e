@@ -39,6 +39,14 @@
 #define TX_DTX_IDX(__x)		(TX_DTX_IDX0 + ((__x) * TX_QUEUE_REG_OFFSET))
 
 /*
+ * Queue register offset macros for MT7630
+ */
+#define TX_BASE_PTR_7630(__x)	(TX_RING_BASE + ((__x) * TX_QUEUE_REG_OFFSET))
+#define TX_MAX_CNT_7630(__x)	(TX_RING_CNT + ((__x) * TX_QUEUE_REG_OFFSET))
+#define TX_CTX_IDX_7630(__x)	(TX_RING_CIDX + ((__x) * TX_QUEUE_REG_OFFSET))
+#define TX_DTX_IDX_7630(__x)	(TX_RING_DIDX + ((__x) * TX_QUEUE_REG_OFFSET))
+
+/*
  * DMA descriptor defines.
  */
 #define TXD_DESC_SIZE			(4 * sizeof(__le32))
@@ -79,6 +87,25 @@
 #define TXD_W3_TCO			FIELD32(0x20000000)
 #define TXD_W3_UCO			FIELD32(0x40000000)
 #define TXD_W3_ICO			FIELD32(0x80000000)
+
+/*
+ * Word3 for 7630
+ * WIV: Wireless Info Valid. 1: Driver filled WI, 0: DMA needs to copy WI
+ * QSEL: Select on-chip FIFO ID for 2nd-stage output scheduler.
+ *       0:MGMT, 1:HCCA 2:EDCA
+ */
+#define TXD_W3_7630_PKTLEN			FIELD32(0x0000FFFF)
+#define TXD_W3_7630_NEXT_VLD			FIELD32(0x00010000)
+#define TXD_W3_7630_TXBURST			FIELD32(0x00020000)
+#define TXD_W3_7630_RSV0			FIELD32(0x00040000)
+#define TXD_W3_7630_PKT_80211			FIELD32(0x00080000)
+#define TXD_W3_7630_TSO			FIELD32(0x00100000)
+#define TXD_W3_7630_CSO			FIELD32(0x00200000)
+#define TXD_W3_7630_RSV1			FIELD32(0x00c00000)
+#define TXD_W3_7630_WIV			FIELD32(0x01000000)
+#define TXD_W3_7630_QSEL			FIELD32(0x06000000)
+#define TXD_W3_7630_D_PORTL			FIELD32(0x38000000)
+#define TXD_W3_7630_TNFO_TYPE			FIELD32(0xc0000000)
 
 /*
  * RX descriptor format for RX Ring.
@@ -126,6 +153,27 @@
 #define RXD_W3_PLCP_SIGNAL		FIELD32(0x00020000)
 #define RXD_W3_PLCP_RSSI		FIELD32(0x00040000)
 
+/*
+ * Word0 for 7630
+ */
+#define RXD_W0_7630_SDP0			FIELD32(0xffffffff)
+
+
+/*
+ * Word1 for 7630
+ */
+#define RXD_W1_7630_SDL1			FIELD32(0x00003fff)
+#define RXD_W1_7630_LS1			FIELD32(0x00004000)
+#define RXD_W1_7630_BURST			FIELD32(0x00008000)
+#define RXD_W1_7630_SDL0			FIELD32(0x3fff0000)
+#define RXD_W1_7630_LS0			FIELD32(0x40000000)
+#define RXD_W1_7630_DMA_DONE			FIELD32(0x80000000)
+
+/*
+ * Word2
+ */
+#define RXD_W2_7630_SDP1			FIELD32(0xffffffff)
+
 /* TX descriptor initialization */
 __le32 *rt2800mmio_get_txwi(struct queue_entry *entry);
 void rt2800mmio_write_tx_desc(struct queue_entry *entry,
@@ -137,6 +185,7 @@ void rt2800mmio_fill_rxdone(struct queue_entry *entry,
 
 /* Interrupt functions */
 void rt2800mmio_txstatus_tasklet(unsigned long data);
+void rt2800mmio_tx8damdone_tasklet(unsigned long data);
 void rt2800mmio_pretbtt_tasklet(unsigned long data);
 void rt2800mmio_tbtt_tasklet(unsigned long data);
 void rt2800mmio_rxdone_tasklet(unsigned long data);

@@ -117,7 +117,7 @@ void rt2x00lib_config_antenna(struct rt2x00_dev *rt2x00dev,
 	struct link_ant *ant = &rt2x00dev->link.ant;
 	struct antenna_setup *def = &rt2x00dev->default_ant;
 	struct antenna_setup *active = &rt2x00dev->link.ant.active;
-
+	return;
 	/*
 	 * When the caller tries to send the SW diversity,
 	 * we must update the ANTENNA_RX_DIVERSITY flag to
@@ -238,6 +238,8 @@ void rt2x00lib_config(struct rt2x00_dev *rt2x00dev,
 
 		/* Used for VCO periodic calibration */
 		rt2x00dev->rf_channel = libconf.rf.channel;
+	} else {
+		return;
 	}
 
 	if (rt2x00_has_cap_flag(rt2x00dev, REQUIRE_PS_AUTOWAKE) &&

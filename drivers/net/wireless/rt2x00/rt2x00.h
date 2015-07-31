@@ -53,6 +53,1332 @@
 #define DRV_VERSION	"2.3.0"
 #define DRV_PROJECT	"http://rt2x00.serialmonkey.com"
 
+
+#ifndef GNU_PACKED
+#define GNU_PACKED	__attribute__ ((packed))
+#endif // GNU_PACKED //
+
+typedef void VOID;
+typedef signed long LONG;
+typedef signed char CHAR;
+typedef int INT32;
+typedef unsigned int UINT32;
+typedef unsigned char BOOLEAN;
+typedef unsigned char UINT8;
+typedef unsigned short UINT16;
+typedef unsigned char UCHAR;
+typedef unsigned char BOOLEAN;
+typedef unsigned short USHORT;
+typedef unsigned int UINT;
+typedef unsigned long ULONG;
+typedef char *PSTRING;
+typedef VOID *PVOID;
+typedef CHAR *PCHAR;
+typedef UCHAR *PUCHAR;
+typedef USHORT *PUSHORT;
+typedef LONG *PLONG;
+typedef ULONG *PULONG;
+typedef UINT *PUINT;
+typedef signed int INT;
+typedef long long INT64;
+
+#define ra_dma_addr_t					dma_addr_t
+typedef void				* PNDIS_PACKET;
+typedef char				NDIS_PACKET;
+typedef PNDIS_PACKET		* PPNDIS_PACKET;
+typedef	ra_dma_addr_t			NDIS_PHYSICAL_ADDRESS;
+typedef	ra_dma_addr_t			* PNDIS_PHYSICAL_ADDRESS;
+typedef void				* NDIS_HANDLE;
+typedef char 				* PNDIS_BUFFER;
+typedef struct pci_dev 		* PPCI_DEV;
+
+#undef __inline
+#define __inline		static inline
+#define IN
+#define OUT
+#define INOUT
+#define NDIS_STATUS		INT
+
+#ifndef TRUE
+#define TRUE						1
+#endif
+#ifndef FALSE
+#define FALSE						0
+#endif
+
+
+#define RF_MISC	0x0518
+#define TX_ALC_CFG_0	0x13B0
+#define NDIS_STATUS_SUCCESS                     0x00
+#define NDIS_STATUS_FAILURE                     0x01
+#define NDIS_STATUS_INVALID_DATA				0x02
+#define NDIS_STATUS_RESOURCES                   0x03
+
+#define MGMT_RING_SIZE          32
+#define RTMP_PKT_TAIL_PADDING 	11 /* 3(max 4 byte padding) + 4 (last packet padding) + 4 (MaxBulkOutsize align padding) */
+#define NUM_OF_LOCAL_TXBUF      2
+#define TXD_SIZE		16	/* TXD_SIZE = TxD + TxInfo */
+#define RXD_SIZE		16	
+
+#define TypeTFSwitch						0x1
+#define TypeProtectionFrame					0x2
+#define TypeAFH 							0x3	
+#define TypeWiFiStatus                                  0x4
+#define TypeHostLoopBackTFSwitch 							0xFFF1	
+#define TypeCoexCCUForceMode 							0xFFF2
+
+#define COEX_MODE_RESET           0
+#define COEX_MODE_TDD               1
+#define COEX_MODE_HYBRID          2
+#define COEX_MODE_FDD               3
+
+#define COEX_OPMODE_STA                  0
+#define COEX_OPMODE_AP                   1
+#define COEX_OPMODE_GC           2
+#define COEX_OPMODE_GO               3     
+#define COEX_OPMODE_BT                   4
+#define COEX_OPMODE_AD_HOC            5
+
+
+#define WLAN_NO_BSSID               0x0
+#define WLAN_Device_OFF                 0x1
+#define WLAN_Device_ON    0x2
+#define WLAN_SCANREQEST                         0x3
+#define WLAN_SCANDONE                              0x4
+#define WLAN_SCANCANCEL                             0x5
+#define WLAN_SCAN2GREQUET                             0x6
+#define WLAN_SCAN5GREQUET                             0x7
+#define WLAN_CONNECTION_START		0x14
+#define WLAN_CONNECTION_COMPLETION	0x15
+#define WLAN_CONNECTION_CANCEL_IND	0x16
+#define WLAN_CONNECTION_JOIN_FAIL	0x17
+#define WLAN_CONNECTION_AUTH_FAIL	0x18
+#define WLAN_CONNECTION_ASSOC_FAIL	0x19
+#define WLAN_DISCONNECT                      	0x1A
+#define WLAN_ROAMING_START                  	0x1B
+#define WLAN_ROAMING_COMPLETE             0x1C
+#define WLAN_DeAuthConfirm	0x8
+#define WLAN_AssocRequest	0x9
+#define WLAN_AssocConfirm	0xA
+#define WLAN_ReAssocRequest	0xB
+#define WLAN_ReAssocConfirm	0xC
+#define WLAN_DisAssocRequest	0xD
+#define BT_HCI_Create_Physical_Link     0xB0
+#define BT_HCI_Accept_Physical_Link     0xB1
+#define BT_HCI_Disconnect_Physical_Link 0xB2
+#define BT_Connection_Accept_Timeout    0xB3
+#define BT_MAC_Start_Completed	0xB4
+#define BT_MAC_Start_Failed	0xB5
+#define BT_MAC_Connect_Completed	0xB6
+#define BT_MAC_Connect_Failed	0xB7
+#define BT_MAC_Media_Disconnection_Ind	0xB8
+#define BT_MAC_Connection_Cancel_Ind	0xB9
+#define BT_Four_Way_Handshake_Fail	0xBA
+#define BT_Four_Way_Handshake_Success	0xBB
+#define WLAN_INVINCIBLE_REQ 0xF1
+#define WLAN_INVINCIBLE_ABORT 0xF2
+#define WLAN_BEACON_SERVICE_REQ 0xF3
+#define WLAN_BEACON_SERVICE_CONF 0xF4
+
+#define NULLFRAMESPACE                  10
+#define COEXNOZEROSHIFT                1
+#define CTSTOSELF                  0
+#define CFEND                         1
+#define POWERSAVE0               2
+#define POWERSAVE1               3
+#define PROTECTIONFRAMEREADY  1
+#define PROTECTIONFRAMECANCEL 2
+
+#define COEX_WIFI_LINK_UP              1
+#define COEX_WIFI_LINK_DOWN         2
+
+// value domain of 802.11 header FC.Tyte, which is b3..b2 of the 1st-byte of MAC header
+#define BTYPE_MGMT                  0
+#define BTYPE_CNTL                  1
+#define BTYPE_DATA                  2
+// value domain of 802.11 MGMT frame's FC.subtype, which is b7..4 of the 1st-byte of MAC header
+#define SUBTYPE_ASSOC_REQ           0
+#define SUBTYPE_ASSOC_RSP           1
+#define SUBTYPE_REASSOC_REQ         2
+#define SUBTYPE_REASSOC_RSP         3
+#define SUBTYPE_PROBE_REQ           4
+#define SUBTYPE_PROBE_RSP           5
+#define SUBTYPE_BEACON              8
+#define SUBTYPE_ATIM                9
+#define SUBTYPE_DISASSOC            10
+#define SUBTYPE_AUTH                11
+#define SUBTYPE_DEAUTH              12
+#define SUBTYPE_ACTION              13
+#define SUBTYPE_ACTION_NO_ACK              14
+
+// value domain of 802.11 CNTL frame's FC.subtype, which is b7..4 of the 1st-byte of MAC header
+#define SUBTYPE_WRAPPER       	7
+#define SUBTYPE_BLOCK_ACK_REQ       8
+#define SUBTYPE_BLOCK_ACK           9
+#define SUBTYPE_PS_POLL             10
+#define SUBTYPE_RTS                 11
+#define SUBTYPE_CTS                 12
+#define SUBTYPE_ACK                 13
+#define SUBTYPE_CFEND               14
+#define SUBTYPE_CFEND_CFACK         15
+
+// value domain of 802.11 DATA frame's FC.subtype, which is b7..4 of the 1st-byte of MAC header
+#define SUBTYPE_DATA                0
+#define SUBTYPE_DATA_CFACK          1
+#define SUBTYPE_DATA_CFPOLL         2
+#define SUBTYPE_DATA_CFACK_CFPOLL   3
+#define SUBTYPE_NULL_FUNC           4
+#define SUBTYPE_CFACK               5
+#define SUBTYPE_CFPOLL              6
+#define SUBTYPE_CFACK_CFPOLL        7
+#define SUBTYPE_QDATA               8
+#define SUBTYPE_QDATA_CFACK         9
+#define SUBTYPE_QDATA_CFPOLL        10
+#define SUBTYPE_QDATA_CFACK_CFPOLL  11
+#define SUBTYPE_QOS_NULL            12
+#define SUBTYPE_QOS_CFACK           13
+#define SUBTYPE_QOS_CFPOLL          14
+#define SUBTYPE_QOS_CFACK_CFPOLL    15
+
+// ACK policy of QOS Control field bit 6:5
+#define NORMAL_ACK                  0x00  // b6:5 = 00
+#define NO_ACK                      0x20  // b6:5 = 01
+#define NO_EXPLICIT_ACK             0x40  // b6:5 = 10
+#define BLOCK_ACK                   0x60  // b6:5 = 11
+
+// power status related definitions
+#define PWR_ACTIVE                      0
+#define PWR_SAVE                        1
+#define PWR_MMPS                        2			//MIMO power save
+//#define PWR_UNKNOWN                   2
+
+#define MODE_CCK	0
+#define MODE_OFDM   1
+#define MODE_HTMIX	2
+#define MODE_HTGREENFIELD	3
+#define MODE_VHT	4
+
+/* BW */
+#define BW_20		0
+#define BW_40		1
+#define BW_80		2
+#define BW_10		4	/* 802.11j has 10MHz. This definition is for internal usage. doesn't fill in the IE or other field. */
+
+/*
+	RF bank
+*/
+#define RF_BANK0	0
+#define RF_BANK1	1
+#define RF_BANK2	2
+#define RF_BANK3	3
+#define RF_BANK4	4
+#define RF_BANK5	5
+#define RF_BANK6	6
+#define RF_BANK7	7
+#define RF_BANK8	8
+#define RF_BANK9	9
+#define RF_BANK10	10
+#define RF_BANK11	11
+#define RF_BANK12	12
+#define RF_BANK13	13
+#define RF_BANK14	14
+#define RF_BANK15	15
+
+/*
+	RF sections
+*/
+#define RF_R00			0
+#define RF_R01			1
+#define RF_R02			2
+#define RF_R03			3
+#define RF_R04			4
+#define RF_R05			5
+#define RF_R06			6
+#define RF_R07			7
+#define RF_R08			8
+#define RF_R09			9
+#define RF_R10			10
+#define RF_R11			11
+#define RF_R12			12
+#define RF_R13			13
+#define RF_R14			14
+#define RF_R15			15
+#define RF_R16			16
+#define RF_R17			17
+#define RF_R18			18
+#define RF_R19			19
+#define RF_R20			20
+#define RF_R21			21
+#define RF_R22			22
+#define RF_R23			23
+#define RF_R24			24
+#define RF_R25			25
+#define RF_R26			26
+#define RF_R27			27
+#define RF_R28			28
+#define RF_R29			29
+#define RF_R30			30
+#define RF_R31			31
+#define	RF_R32			32
+#define	RF_R33			33
+#define	RF_R34			34
+#define	RF_R35			35
+#define	RF_R36			36
+#define	RF_R37			37
+#define	RF_R38			38
+#define	RF_R39			39
+#define	RF_R40			40
+#define	RF_R41			41
+#define	RF_R42			42
+#define	RF_R43			43
+#define	RF_R44			44
+#define	RF_R45			45
+#define	RF_R46			46
+#define	RF_R47			47
+#define	RF_R48			48
+#define	RF_R49			49
+#define	RF_R50			50
+#define	RF_R51			51
+#define	RF_R52			52
+#define	RF_R53			53
+#define	RF_R54			54
+#define	RF_R55			55
+#define	RF_R56			56
+#define	RF_R57			57
+#define	RF_R58			58
+#define	RF_R59			59
+#define	RF_R60			60
+#define	RF_R61			61
+#define	RF_R62			62
+#define	RF_R63			63
+#define	RF_R64			64
+#define	RF_R65			65
+#define	RF_R66			66
+#define	RF_R67			67
+#define	RF_R68			68
+#define	RF_R69			69
+#define	RF_R70			70
+#define	RF_R71			71
+#define	RF_R72			72
+#define	RF_R73			73
+#define	RF_R74			74
+#define	RF_R75			75
+#define	RF_R76			76
+#define	RF_R77			77
+#define	RF_R78			78
+#define	RF_R79			79
+#define	RF_R126			126
+#define	RF_R127			127
+
+#define	MT7630_RF_CSR_CFG			0x0500
+#define 	PCIE_REMAP_BASE4 			(0x1024C)
+
+// on-chip NULL frame sapace - base address = 0x7700
+// here stores QOS-NULL frame . 
+//PBF_CFG(0x408) bit15 use Qos-NULL to enable STA mode early terminate txop.
+#define HW_NULL_BASE            0x7700
+// 2nd NULL FRAME put CF-END frame. 
+//PBF_CFG(0x408) bit14 to enable AP mode early terminate txop requires CF-END
+#define HW_NULL2_BASE            0x7780
+
+#define INT_HCCA_DLY	(0x00001000)
+#define INT_MGMT_DLY	(0x00002000)
+#define MAC_ADDR_LEN                    6
+#define BSSID_WCID      1	// in infra mode, always put bssid with this WCID 
+//woody 
+#define BT_FUN_INFO		0xC4
+
+#define RINGREG_DIFF	0x10
+#define TX_RING_BASE	0x0300
+#define TX_RING_NUM		10
+#define TX_RING_PTR		0x0300
+#define TX_RING_CNT		0x0304
+#define TX_RING_CIDX	0x0308
+#define TX_RING_DIDX	0x030c
+#define TX_MGMT_BASE	(TX_RING_BASE  + RINGREG_DIFF * 9)
+#define TX_MGMT_CNT	(TX_MGMT_BASE + 0x04)
+#define TX_MGMT_CIDX	(TX_MGMT_BASE + 0x08)
+#define TX_MGMT_DIDX	(TX_MGMT_BASE + 0x0c)
+#define TX_CTRL_BASE	(TX_RING_BASE  + RINGREG_DIFF * 8)
+#define TX_CTRL_CNT		(TX_CTRL_BASE + 0x04)
+#define TX_CTRL_CIDX	(TX_CTRL_BASE + 0x08)
+#define TX_CTRL_DIDX	(TX_CTRL_BASE + 0x0c)
+
+#define RX_RING_BASE	0x03c0
+#define RX_RING_PTR		RX_RING_BASE
+#define RX_RING_CNT		(RX_RING_BASE + 0x04)
+#define RX_RING_CIDX	(RX_RING_BASE + 0x08)
+#define RX_RING_DIDX	(RX_RING_BASE + 0x0c)
+
+#define RX_RING1_BASE	0x03d0
+#define RX_RING1_PTR	RX_RING1_BASE
+#define RX_RING1_CNT	(RX_RING1_BASE + 0x04)
+#define RX_RING1_CIDX	(RX_RING1_BASE + 0x08)
+#define RX_RING1_DIDX	(RX_RING1_BASE + 0x0c)
+
+#define TxWIMPDUByteCnt	TXWI_N.MPDUtotalByteCnt
+#define TxWIWirelessCliID		TXWI_N.wcid
+#define TxWIFRAG			TXWI_N.FRAG
+#define TxWICFACK			TXWI_N.CFACK
+#define TxWITS				TXWI_N.TS
+#define TxWIAMPDU			TXWI_N.AMPDU
+#define TxWIACK				TXWI_N.ACK
+#define TxWITXOP			TXWI_N.txop
+#define TxWINSEQ			TXWI_N.NSEQ
+#define TxWIBAWinSize		TXWI_N.BAWinSize
+#define TxWIShortGI			TXWI_N.ShortGI
+#define TxWISTBC			TXWI_N.STBC
+#define TxWIPacketId			TXWI_N.TxPktId
+#define TxWIBW				TXWI_N.BW
+#define TxWIMCS				TXWI_N.MCS
+#define TxWIPHYMODE		TXWI_N.PHYMODE
+#define TxWIMIMOps			TXWI_N.MIMOps
+#define TxWIMpduDensity		TXWI_N.MpduDensity
+#define TxWILutEn			TXWI_N.lut_en
+#define TxWIIV				TXWI_N.IV
+#define TxWIEIV				TXWI_N.EIV
+
+#define TxInfoWIV			txinfo_nmac_pkt.wiv
+#define TxInfoQSEL			txinfo_nmac_pkt.QSEL
+#define TxInfoPktLen			txinfo_nmac_pkt.pkt_len
+#define TxInfoSwLstRnd		txinfo_nmac_pkt.rsv0
+#define TxInfoUDMATxburst	txinfo_nmac_pkt.tx_burst
+#define TxInfoUDMANextVld	txinfo_nmac_pkt.next_vld
+#define TxInfoPkt80211		txinfo_nmac_pkt.pkt_80211
+
+
+#define RTMP_PCI_DMA_TODEVICE		0xFF00
+#define RTMP_PCI_DMA_FROMDEVICE		0xFF01
+
+
+enum CALIBRATION_ID {
+	R_CALIBRATION = 1,
+	RXDCOC_CALIBRATION,
+	LC_CALIBRATION,
+	LOFT_CALIBRATION,
+	TXIQ_CALIBRATION,
+	BW_CALIBRATION,
+	DPD_CALIBRATION,
+	RXIQ_CALIBRATION,
+	TXDCOC_CALIBRATION,
+	RX_GROUP_DELAY_CALIBRATION,
+	TX_GROUP_DELAY_CALIBRATION,
+};
+
+
+#define TX_STA_FIFO_EXT		0x1798		/* Only work after RT53xx */
+typedef	union _TX_STA_FIFO_EXT_STRUC {
+	struct
+	{
+		ULONG TX_RTY_CNT:8; // Tx retry count
+		ULONG TX_PKT_ID:8; // Tx packet ID (copied from per-packet TXWI)
+		ULONG Reserved:16;
+	} field;
+
+	UINT word;
+} TX_STA_FIFO_EXT_STRUC;
+
+
+typedef union  _MCU_LEDCS_STRUC {
+	struct	{
+		UCHAR		LedMode:7;		
+		UCHAR		Polarity:1;
+	} field;
+	UCHAR			word;
+} MCU_LEDCS_STRUC, *PMCU_LEDCS_STRUC;
+
+typedef struct _LED_CONTROL
+{
+	MCU_LEDCS_STRUC		MCULedCntl; /* LED Mode EEPROM 0x3b */
+	USHORT				LedAGCfg;	/* LED A/G Configuration EEPROM 0x3c */
+	USHORT				LedACTCfg;	/* LED ACT Configuration EEPROM 0x3e */
+	USHORT				LedPolarity;/* LED A/G/ACT polarity EEPROM 0x40 */
+	UCHAR				LedIndicatorStrength;
+	UCHAR				RssiSingalstrengthOffet;
+	BOOLEAN				bLedOnScanning;
+	UCHAR				LedStatus;
+}LED_CONTROL, *PLED_CONTROL;
+
+
+
+typedef	union _RLT_RF_CSR_CFG {
+	struct {
+		unsigned int RF_CSR_DATA:8;
+		unsigned int RF_CSR_REG_ID:7;
+		unsigned int RF_CSR_REG_BANK:3;
+		unsigned int rsv:12;
+		unsigned int RF_CSR_WR:1;
+		unsigned int RF_CSR_KICK:1;
+	} field;
+	unsigned int word;
+}RLT_RF_CSR_CFG;
+
+
+typedef struct GNU_PACKED _RXFCE_INFO{
+	UINT32 pkt_len:14;
+	UINT32 rsv:2;
+
+	UINT32 udp_err:1;
+	UINT32 tcp_err:1;
+	UINT32 ip_err:1;
+	UINT32 pkt_80211:1;
+	UINT32 l3l4_done:1;
+	UINT32 mac_len:3;
+
+	UINT32 pcie_intr:1;
+	UINT32 qsel:2;
+	UINT32 s_port:3;
+	UINT32 info_type:2;
+}RXFCE_INFO;
+
+typedef	struct GNU_PACKED _RXINFO_STRUC {
+	UINT32		BA:1;
+	UINT32		DATA:1;
+	UINT32		NULLDATA:1;
+	UINT32		FRAG:1;
+	UINT32		U2M:1;
+	UINT32		Mcast:1;
+	UINT32		Bcast:1;
+	UINT32		MyBss:1;
+	UINT32		Crc:1;
+	UINT32		CipherErr:2;
+	UINT32		AMSDU:1;
+	UINT32		HTC:1;
+	UINT32		RSSI:1;
+	UINT32		L2PAD:1;
+	UINT32		AMPDU:1;
+	UINT32		Decrypted:1;
+	UINT32		BssIdx3:1;
+	UINT32		wapi_kidx:1;
+	UINT32		pn_len:3;
+	UINT32		rsv:6;
+	UINT32		tcp_sum_bypass:1;
+	UINT32		ip_sum_bypass:1;
+	UINT32		tcp_sum_err:1;
+	UINT32		ip_sum_err:1;
+}RXINFO_STRUC, *PRXINFO_STRUC;
+
+typedef union _LARGE_INTEGER {
+	struct {
+
+		UINT LowPart;
+		INT32 HighPart;
+	} u;
+	INT64 QuadPart;
+} LARGE_INTEGER;
+
+typedef struct _COUNTER_802_3 {
+	/* General Stats */
+	ULONG GoodTransmits;
+	ULONG GoodReceives;
+	ULONG TxErrors;
+	ULONG RxErrors;
+	ULONG RxNoBuffer;
+
+	/* Ethernet Stats */
+	ULONG RcvAlignmentErrors;
+	ULONG OneCollision;
+	ULONG MoreCollisions;
+
+} COUNTER_802_3, *PCOUNTER_802_3;
+
+typedef struct _COUNTER_802_11 {
+	ULONG Length;
+/*	LARGE_INTEGER   LastTransmittedFragmentCount; */
+	LARGE_INTEGER TransmittedFragmentCount;
+	LARGE_INTEGER MulticastTransmittedFrameCount;
+	LARGE_INTEGER FailedCount;
+	LARGE_INTEGER RetryCount;
+	LARGE_INTEGER MultipleRetryCount;
+	LARGE_INTEGER RTSSuccessCount;
+	LARGE_INTEGER RTSFailureCount;
+	LARGE_INTEGER ACKFailureCount;
+	LARGE_INTEGER FrameDuplicateCount;
+	LARGE_INTEGER ReceivedFragmentCount;
+	LARGE_INTEGER MulticastReceivedFrameCount;
+	LARGE_INTEGER FCSErrorCount;
+	LARGE_INTEGER TransmittedFrameCount;
+	LARGE_INTEGER WEPUndecryptableCount;
+	LARGE_INTEGER TransmitCountFrmOs;
+} COUNTER_802_11, *PCOUNTER_802_11;
+
+typedef struct _COUNTER_RALINK {
+	UINT32 OneSecStart;	/* for one sec count clear use */
+	UINT32 OneSecBeaconSentCnt;
+	UINT32 OneSecFalseCCACnt;	/* CCA error count, for debug purpose, might move to global counter */
+	UINT32 OneSecRxFcsErrCnt;	/* CRC error */
+	UINT32 OneSecRxOkCnt;	/* RX without error */
+	UINT32 OneSecTxFailCount;
+	UINT32 OneSecTxNoRetryOkCount;
+	UINT32 OneSecTxRetryOkCount;
+	UINT32 OneSecRxOkDataCnt;	/* unicast-to-me DATA frame count */
+	UINT32 OneSecTransmittedByteCount;	/* both successful and failure, used to calculate TX throughput */
+
+	ULONG OneSecOsTxCount[5];
+	ULONG OneSecDmaDoneCount[5];
+	UINT32 OneSecTxDoneCount;
+	ULONG OneSecRxCount;
+	UINT32 OneSecReceivedByteCount;
+	UINT32 OneSecTxAggregationCount;
+	UINT32 OneSecRxAggregationCount;
+	UINT32 OneSecEnd;	/* for one sec count clear use */
+
+	ULONG TransmittedByteCount;	/* both successful and failure, used to calculate TX throughput */
+	ULONG ReceivedByteCount;	/* both CRC okay and CRC error, used to calculate RX throughput */
+	ULONG LastReceivedByteCount;
+	ULONG BadCQIAutoRecoveryCount;
+	ULONG PoorCQIRoamingCount;
+	ULONG MgmtRingFullCount;
+	ULONG RxCountSinceLastNULL;
+	ULONG RxCount;
+	ULONG KickTxCount;
+	LARGE_INTEGER RealFcsErrCount;
+	ULONG PendingNdisPacketCount;
+	ULONG FalseCCACnt;                    /* CCA error count */
+
+	UINT32 LastOneSecTotalTxCount;	/* OneSecTxNoRetryOkCount + OneSecTxRetryOkCount + OneSecTxFailCount */
+	UINT32 LastOneSecRxOkDataCnt;	/* OneSecRxOkDataCnt */
+	ULONG DuplicateRcv;
+	ULONG TxAggCount;
+	ULONG TxNonAggCount;
+	ULONG TxAgg1MPDUCount;
+	ULONG TxAgg2MPDUCount;
+	ULONG TxAgg3MPDUCount;
+	ULONG TxAgg4MPDUCount;
+	ULONG TxAgg5MPDUCount;
+	ULONG TxAgg6MPDUCount;
+	ULONG TxAgg7MPDUCount;
+	ULONG TxAgg8MPDUCount;
+	ULONG TxAgg9MPDUCount;
+	ULONG TxAgg10MPDUCount;
+	ULONG TxAgg11MPDUCount;
+	ULONG TxAgg12MPDUCount;
+	ULONG TxAgg13MPDUCount;
+	ULONG TxAgg14MPDUCount;
+	ULONG TxAgg15MPDUCount;
+	ULONG TxAgg16MPDUCount;
+
+	LARGE_INTEGER TransmittedOctetsInAMSDU;
+	LARGE_INTEGER TransmittedAMSDUCount;
+	LARGE_INTEGER ReceivedOctesInAMSDUCount;
+	LARGE_INTEGER ReceivedAMSDUCount;
+	LARGE_INTEGER TransmittedAMPDUCount;
+	LARGE_INTEGER TransmittedMPDUsInAMPDUCount;
+	LARGE_INTEGER TransmittedOctetsInAMPDUCount;
+	LARGE_INTEGER MPDUInReceivedAMPDUCount;
+
+	ULONG PhyErrCnt;
+	ULONG PlcpErrCnt;
+} COUNTER_RALINK, *PCOUNTER_RALINK;
+
+#define RX_STA_CNT0		0x1700
+typedef	union _RX_STA_CNT0_STRUC {
+	struct {
+	    UINT16  CrcErr;
+	    UINT16  PhyErr;
+	} field;
+	UINT32 word;
+} RX_STA_CNT0_STRUC;
+
+#define RX_STA_CNT1		0x1704
+typedef	union _RX_STA_CNT1_STRUC {
+	struct {
+	    UINT16  FalseCca;
+	    UINT16  PlcpErr;
+	} field;
+	UINT32 word;
+} RX_STA_CNT1_STRUC;
+
+#define RX_STA_CNT2		0x1708
+typedef	union _RX_STA_CNT2_STRUC {
+	struct {
+	    UINT16  RxDupliCount;
+	    UINT16  RxFifoOverflowCount;
+	} field;
+	UINT32 word;
+} RX_STA_CNT2_STRUC;
+
+/* STA_CSR3: TX Beacon count */
+#define TX_STA_CNT0		0x170C
+typedef	union _TX_STA_CNT0_STRUC {
+	struct {
+	    UINT16  TxFailCount;
+	    UINT16  TxBeaconCount;
+	} field;
+	UINT32 word;
+} TX_STA_CNT0_STRUC;
+
+#define TX_STA_CNT1		0x1710
+typedef	union _TX_STA_CNT1_STRUC {
+	struct {
+	    UINT16  TxSuccess;
+	    UINT16  TxRetransmit;
+	} field;
+	UINT32 word;
+} TX_STA_CNT1_STRUC;
+/* TX_STA_CNT2: TX tx count */
+#define TX_STA_CNT2		0x1714
+typedef	union _TX_STA_CNT2_STRUC {
+	struct {
+	    UINT16  TxZeroLenCount;
+	    UINT16  TxUnderFlowCount;
+	} field;
+	UINT32 word;
+} TX_STA_CNT2_STRUC;
+
+#define TX_STA_FIFO		0x1718
+typedef	union _TX_STA_FIFO_STRUC {
+	struct {
+		UINT32       	bValid:1;
+		UINT32       	PidType:4;
+		UINT32       	TxSuccess:1;
+		UINT32       	TxAggre:1;
+		UINT32       	TxAckRequired:1;
+		UINT32		wcid:8;
+		UINT32		SuccessRate:11;
+		UINT32		eTxBF:1;
+		UINT32		Sounding:1;
+		UINT32		iTxBF:1;
+		UINT32		Reserve:2;
+	} field;
+	UINT32 word;
+} TX_STA_FIFO_STRUC;
+
+#define INC_COUNTER64(Val)          (Val.QuadPart++)
+
+typedef spinlock_t			OS_NDIS_SPIN_LOCK;
+#define NDIS_SPIN_LOCK							OS_NDIS_SPIN_LOCK
+
+#define OS_NdisAllocateSpinLock(__lock)			\
+{                                       		\
+    spin_lock_init((spinlock_t *)(__lock));		\
+}
+
+#define OS_NdisFreeSpinLock(lock)				\
+	do{}while(0)
+
+
+#define NdisAllocateSpinLock(__pReserved, __pLock)	OS_NdisAllocateSpinLock(__pLock)
+
+#define OS_SEM_LOCK(__lock)						\
+{												\
+	spin_lock_bh((spinlock_t *)(__lock));		\
+}
+
+#define OS_SEM_UNLOCK(__lock)					\
+{												\
+	spin_unlock_bh((spinlock_t *)(__lock));		\
+}
+
+
+#define RTMP_IRQ_LOCK(__lock, __irqflags)			\
+{													\
+	__irqflags = 0;									\
+	spin_lock_irqsave((spinlock_t *)(__lock), __irqflags);			\
+}
+
+#define RTMP_IRQ_UNLOCK(__lock, __irqflag)			\
+{													\
+	spin_unlock_irqrestore((spinlock_t *)(__lock), __irqflag);			\
+}
+
+
+
+
+#define RELEASE_NDIS_PACKET(_pAd, _pPacket, _Status)                    \
+{                                                                       \
+        RTMPFreeNdisPacket(_pAd, _pPacket);                             \
+}
+
+#define NdisAllocateSpinLock(__pReserved, __pLock)	OS_NdisAllocateSpinLock(__pLock)
+#define NdisFreeSpinLock						OS_NdisFreeSpinLock
+
+#define RTMP_SEM_LOCK							OS_SEM_LOCK
+#define RTMP_SEM_UNLOCK							OS_SEM_UNLOCK
+#define NdisAcquireSpinLock						RTMP_SEM_LOCK
+#define NdisReleaseSpinLock						RTMP_SEM_UNLOCK
+
+
+#define RTMP_IO_WRITE8(_A, _R, _V)							\
+{															\
+	writeb((_V), (PUCHAR)((_A)->csr.base + (_R)));		\
+}
+
+#define RTMP_IO_WRITE32(_A, _R, _V) \
+do{ \
+		writel((_V), (void *)((_A)->csr.base + (_R))); \
+}while(0)
+
+#define RTMP_IO_READ8(_A, _R, _pV)								\
+{																\
+	(*(_pV) = readb((void *)((_A)->csr.base + (_R))));				\
+}
+
+
+#define RTMP_IO_READ32(_A, _R, _pV)								\
+{																\
+(*(_pV) = readl((void *)((_A)->csr.base + (_R))));			\
+											\
+}
+
+
+#define COPY_MAC_ADDR(Addr1, Addr2)             memcpy((Addr1), (Addr2), MAC_ADDR_LEN)
+
+#define GET_CTRLRING_FREENO(_pAd) \
+	(_pAd->CtrlRing.TxSwFreeIdx > _pAd->CtrlRing.TxCpuIdx)	? \
+			(_pAd->CtrlRing.TxSwFreeIdx - _pAd->CtrlRing.TxCpuIdx - 1) \
+			 :	\
+			(_pAd->CtrlRing.TxSwFreeIdx + MGMT_RING_SIZE - _pAd->CtrlRing.TxCpuIdx - 1);
+
+#define RTPKT_TO_OSPKT(_p)		((struct sk_buff *)(_p))
+#define OSPKT_TO_RTPKT(_p)		((PNDIS_PACKET)(_p))
+
+#define GET_OS_PKT_DATAPTR(_pkt) \
+		(RTPKT_TO_OSPKT(_pkt)->data)
+#define SET_OS_PKT_DATAPTR(_pkt, _dataPtr)	\
+		(RTPKT_TO_OSPKT(_pkt)->data) = (_dataPtr)
+
+#define GET_OS_PKT_LEN(_pkt) \
+		(RTPKT_TO_OSPKT(_pkt)->len)
+#define SET_OS_PKT_LEN(_pkt, _len)	\
+		(RTPKT_TO_OSPKT(_pkt)->len) = (_len)
+		
+#define GET_OS_PKT_DATATAIL(_pkt) \
+		(RTPKT_TO_OSPKT(_pkt)->tail)
+#define SET_OS_PKT_DATATAIL(_pkt, _start, _len)	\
+		((RTPKT_TO_OSPKT(_pkt))->tail) = (PUCHAR)((_start) + (_len))
+		
+#define GET_OS_PKT_HEAD(_pkt) \
+		(RTPKT_TO_OSPKT(_pkt)->head)
+
+#define GET_OS_PKT_END(_pkt) \
+		(RTPKT_TO_OSPKT(_pkt)->end)
+
+#define GET_OS_PKT_NETDEV(_pkt) \
+		(RTPKT_TO_OSPKT(_pkt)->dev)
+#define SET_OS_PKT_NETDEV(_pkt, _pNetDev)	\
+		(RTPKT_TO_OSPKT(_pkt)->dev) = (_pNetDev)
+		
+#define GET_OS_PKT_TYPE(_pkt) \
+		(RTPKT_TO_OSPKT(_pkt))
+
+#define GET_OS_PKT_NEXT(_pkt) \
+		(RTPKT_TO_OSPKT(_pkt)->next)
+
+
+#define INC_RING_INDEX(_idx, _RingSize)    \
+{                                          \
+    (_idx) = (_idx+1) % (_RingSize);       \
+}
+
+
+#define NdisMoveMemory(Destination, Source, Length) memmove(Destination, Source, Length)
+#define NdisCopyMemory(Destination, Source, Length) memcpy(Destination, Source, Length)
+#define NdisZeroMemory(Destination, Length)         memset(Destination, 0, Length)
+#define NdisFillMemory(Destination, Length, Fill)   memset(Destination, Fill, Length)
+#define NdisCmpMemory(Destination, Source, Length)  memcmp(Destination, Source, Length)
+#define NdisEqualMemory(Source1, Source2, Length)   (!memcmp(Source1, Source2, Length))
+#define RTMPEqualMemory(Source1, Source2, Length)	(!memcmp(Source1, Source2, Length))
+
+/*
+ * ULONG
+ * RTMP_GetPhysicalAddressLow(
+ *   IN NDIS_PHYSICAL_ADDRESS  PhysicalAddress);
+ */
+#define RTMP_GetPhysicalAddressLow(PhysicalAddress)		(PhysicalAddress)
+
+/*
+ * ULONG
+ * RTMP_GetPhysicalAddressHigh(
+ *   IN NDIS_PHYSICAL_ADDRESS  PhysicalAddress);
+ */
+#define RTMP_GetPhysicalAddressHigh(PhysicalAddress)		(0)
+
+
+/*
+ * VOID
+ * RTMP_SetPhysicalAddressLow(
+ *   IN NDIS_PHYSICAL_ADDRESS  PhysicalAddress,
+ *   IN ULONG  Value);
+ */
+#define RTMP_SetPhysicalAddressLow(PhysicalAddress, Value)	\
+			PhysicalAddress = Value;
+
+/*
+ * VOID
+ * RTMP_SetPhysicalAddressHigh(
+ *   IN NDIS_PHYSICAL_ADDRESS  PhysicalAddress,
+ *   IN ULONG  Value);
+ */
+#define RTMP_SetPhysicalAddressHigh(PhysicalAddress, Value)
+
+#define RxWIMPDUByteCnt	RXWI_N.MPDUtotalByteCnt
+#define RxWIWirelessCliID	RXWI_N.wcid
+#define RxWIKeyIndex		RXWI_N.key_idx
+#define RxWIMCS				RXWI_N.mcs
+#define RxWIBW				RXWI_N.bw
+#define RxWIBSSID			RXWI_N.bss_idx
+#define RxWISGI				RXWI_N.sgi
+#define RxWIPhyMode		RXWI_N.phy_mode
+#define RxWISTBC			RXWI_N.stbc
+#define RxWITID				RXWI_N.tid
+#define RxWIRSSI0			RXWI_N.rssi[0]
+#define RxWIRSSI1			RXWI_N.rssi[1]
+#define RxWIRSSI2			RXWI_N.rssi[2]
+#define RxWIRSSI3			RXWI_N.rssi[3]
+#define RxWISNR0			RXWI_N.bbp_rxinfo[0]
+#define RxWISNR1			RXWI_N.bbp_rxinfo[1]
+#define RxWISNR2			RXWI_N.bbp_rxinfo[2]
+#define RxWIFOFFSET			RXWI_N.bbp_rxinfo[3]
+
+enum INFO_TYPE {
+	NORMAL_PACKET,
+	CMD_PACKET,
+};
+
+enum D_PORT {
+	WLAN_PORT,
+	CPU_RX_PORT,
+	CPU_TX_PORT,
+	HOST_PORT,
+	VIRTUAL_CPU_RX_PORT,
+	VIRTUAL_CPU_TX_PORT,
+	DISCARD,
+};
+
+
+typedef struct  _PACKET_INFO    {
+	UINT PhysicalBufferCount;    /* Physical breaks of buffer descripor chained */
+	UINT BufferCount;           /* Number of Buffer descriptor chained */
+	UINT TotalPacketLength ;     /* Self explained */
+	PNDIS_BUFFER pFirstBuffer;   /* Pointer to first buffer descriptor */
+} PACKET_INFO, *PPACKET_INFO;
+
+typedef union _INT_SOURCE_CSR_STRUC {
+	struct {
+		UINT32 RxDone:1;
+		UINT32 RxDone1:1;
+		UINT32 rsv4:2;
+		UINT32 Ac0DmaDone:1;
+		UINT32 Ac1DmaDone:1;
+		UINT32 Ac2DmaDone:1;
+		UINT32 Ac3DmaDone:1;
+		UINT32 HccaDmaDone:1;
+		UINT32 MgmtDmaDone:1;
+		UINT32 TxDone6:1;
+		UINT32 TxDone7:1;
+		UINT32 TxDone8:1;
+		UINT32 TxDone9:1;
+		UINT32 rsv3:2;
+		UINT32 rxCoherent:1;
+		UINT32 txCoherent:1;
+		UINT32 trCoherent:1;
+		UINT32 MCUCommandINT:1;
+		UINT32 tbttInt:1;
+		UINT32 PreTBTT:1;
+		UINT32 TXFifoStatusInt:1;
+		UINT32 AutoWakeup:1;
+		UINT32 GPTimer:1;
+		UINT32 rsv2:1;
+		UINT32 RxDelayINT:1;
+		UINT32 TxDelayINT:1;
+		UINT32 rsv1:4;
+	}field;
+	UINT32 word;
+}INT_SOURCE_CSR_STRUC;
+
+
+typedef	union _SHAREDKEY_MODE_STRUC {
+	struct {
+		UINT32       Bss0Key0CipherAlg:4;
+		UINT32       Bss0Key1CipherAlg:4;
+		UINT32       Bss0Key2CipherAlg:4;
+		UINT32       Bss0Key3CipherAlg:4;
+		UINT32       Bss1Key0CipherAlg:4;
+		UINT32       Bss1Key1CipherAlg:4;
+		UINT32       Bss1Key2CipherAlg:4;
+		UINT32       Bss1Key3CipherAlg:4;
+	} field;
+	UINT32 word;
+} SHAREDKEY_MODE_STRUC;
+
+
+
+
+
+typedef struct _DL_LIST
+{
+	struct _DL_LIST *Next;
+	struct _DL_LIST *Prev;
+}DL_LIST, *PDL_LIST;
+
+struct MCU_CTRL {
+	UCHAR CmdSeq;
+	BOOLEAN IsFWReady;
+	NDIS_SPIN_LOCK CmdRspEventListLock;
+	DL_LIST CmdRspEventList;
+};
+
+typedef struct _COEX_MODE_STRUCTURE {
+	BOOLEAN     bForce;
+       BOOLEAN  FDDRequest;
+       BOOLEAN  TDDRequest;
+       ULONG      TDD_Power;
+       ULONG      FDD_Power;
+	ULONG      DefaultMode; 
+	ULONG      CurrentMode;  
+       ULONG      UpdateMode;  
+       CHAR        CoexTDDRSSITreshold;
+       CHAR        CoexFDDRSSITreshold;   
+} COEX_MODE_STRUCTURE, *PCOEX_MODE_STRUCTURE;
+
+typedef struct _COMMON_CONFIG {
+	UCHAR BBPCurrentBW;
+	UCHAR  Channel;
+	UCHAR  CentralChannel;
+} COMMON_CONFIG, *PCOMMON_CONFIG;	
+
+typedef	union	_BT_FUN_INFO_STRUC	{
+	struct	{
+		ULONG		AFH_START_CH:8;
+		ULONG		AFH_END_CH:8;
+		ULONG		YIELD_WIFI_LOW_PRIORITY_TX:1;	
+		ULONG		Reserve:13;	
+		ULONG		WLAN_ACTIVE:1;
+		ULONG		WLAN_EEP_BUSY:1;				
+	}field;
+	ULONG			word;
+} BT_FUN_INFO_STRUC, *PBT_FUN_INFO_STRUC;
+
+struct rt2x00_dev;
+typedef void (*CMD_RSP_HANDLER)(struct rt2x00_dev *pAd, UCHAR *Data);
+struct CMD_UNIT {
+	union {
+		struct {
+			UCHAR Command;
+			UCHAR Token;
+			UCHAR Arg0;
+			UCHAR Arg1;
+		} MCU51;
+		struct {
+			UINT8 Type;
+			USHORT CmdPayloadLen;
+			PUCHAR CmdPayload;
+			USHORT RspPayloadLen;
+			PUCHAR RspPayload;
+			ULONG Timeout;
+			BOOLEAN NeedRsp;
+			BOOLEAN NeedWait;
+			CMD_RSP_HANDLER CmdRspHdler;
+		} ANDES;
+	} u;
+};
+
+
+
+struct CMD_RSP_EVENT {
+	DL_LIST List;
+	UCHAR CmdSeq;	
+	UINT32 Timeout;
+	BOOLEAN NeedWait;
+	struct completion AckDone; 
+	UCHAR **RspPayload;
+	USHORT *RspPayloadLen;
+};
+
+typedef struct _COEX_AFH
+{
+	UINT32					CoexOperation;
+    UINT32                   LinkStatus;   
+    UINT32                   BW;
+    UINT32                   Channel;
+    UINT32	            BssHashID;
+ } COEX_AFH, *PCOEX_AFH;
+
+typedef struct _COEX_TF_SWITCH
+{
+    UINT32					CoexOperation;
+    UINT32                   CoexMode;   
+
+ } COEX_TF_SWITCH, *PCOEX_TF_SWITCH;
+
+
+typedef struct _COEX_WLAN_STATUS
+{
+    UINT32		     CoexOperation;
+    UINT32                   WLANStatus;   
+    UINT32                   PrivilegeTime;
+    UINT32	            BssHashID;
+
+ } COEX_WLAN_STATUS, *PCOEX_WLAN_STATUS;
+
+enum CMD_TYPE {
+	CMD_FUN_SET_OP = 1,
+	CMD_BURST_WRITE = 8,
+	CMD_READ_MODIFY_WRITE,
+	CMD_RANDOM_READ,
+	CMD_BURST_READ,
+	CMD_RANDOM_WRITE = 12,
+	CMD_LED_MODE_OP = 16,
+	CMD_POWER_SAVING_OP = 20,
+	CMD_WOW_ENTRY,
+	CMD_WOW_QUERY,
+	CMD_CARRIER_DETECT_OP = 28,
+	CMD_RADOR_DETECT_OP,
+	CMD_SWITCH_CHANNEL_OP,
+	CMD_CALIBRATION_OP,
+};
+
+#define PKT_CMD_TYPE_COEX_OP			(17)
+
+typedef union _CMB_CTRL_STRUC{
+	struct{
+		u32		AUX_OPT_Bit0_InterfaceClk_40Mhz:1;
+		u32		AUX_OPT_Bit1_PCIePhyClkOn_L1:1;	
+		u32		AUX_OPT_Bit2_PCIeCoreClkOn_L1:1;
+		u32		AUX_OPT_Bit3_PLLOn_L1:1;
+		u32		AUX_OPT_Bit4_RemovePCIePhyClk_WLANOff:1;
+		u32		AUX_OPT_Bit5_RemovePCIePhyClk_BTOff:1;
+		u32		AUX_OPT_Bit6_KeepXtal_On:1;
+		u32		AUX_OPT_Bit7_KeepInterfaceClk:1;
+		u32		AUX_OPT_Bit8_AuxPower_Exists:1;
+		u32		AUX_OPT_Bit9_GPIO3_as_GPIO:1;
+		u32		AUX_OPT_Bit10_NotSwap_WL_LED_ACT_RDY:1;	
+		u32		AUX_OPT_Bit11_Rsv:1;
+		u32		AUX_OPT_Bit12_TRSW0_as_WLAN_ANT_SEL:1;
+		u32		AUX_OPT_Bit13_GPIO7_as_GPIO:1;
+		u32		AUX_OPT_Bit14_TRSW1_as_GPIO:1;
+		u32		AUX_OPT_Bit15_Two_AntennaMode:1;
+		u32		CsrUartMode:1;
+		u32		GPIOModeLed1:1;
+		u32		GPIOModeLed2:1;
+		u32		Rsv:3;
+		u32       	XTAL_RDY_CMB:1;
+		u32       	PLL_LD_CMB:1;
+		u32       	LDO_CORE_LEVEL_CMB:4;
+		u32       	LDO_BGSEL_CMB:2;
+		u32       	LDO3_EN_CMB:1;
+		u32       	LDO0_EN_CMB:1;
+	}field;
+	u32 word;
+}CMB_CTRL_STRUC, *PCMB_CTRL_STRUC;
+typedef	union _WLAN_FUN_CTRL_STRUC	{
+	struct {
+		u32 WLAN_EN_MT7630:1;
+		u32 WLAN_CLK_EN_MT7630:1;
+		u32 WLAN_RESET_RF_MT7630:1;
+		u32 WLAN_RESET_MT7630:1;
+		u32 PCIE_APP0_CLK_REQ_MT7630:1;
+		u32 FRC_WL_ANT_SET_MT7630:1;
+		u32 INV_TR_SW0_MT7630:1;
+		u32 WLAN_ACC_BT_MT7630:1;
+		u32 GPIO0_IN_MT7630:8;
+		u32 GPIO0_OUT_MT7630:8;
+		u32 GPIO0_OUT_OE_N_MT7630:8;
+	} field;
+	u32 word;
+} WLAN_FUN_CTRL_STRUC, *_WLAN_FUN_CTRL_STRUC;
+
+
+typedef struct GNU_PACKED _TXINFO_NMAC_CMD{
+	UINT32 pkt_len:16;
+	UINT32 cmd_seq:4;
+	UINT32 cmd_type:7;
+	UINT32 d_port:3;	
+	UINT32 info_type:2;
+}TXINFO_NMAC_CMD;
+
+typedef struct GNU_PACKED _TXINFO_NMAC_PKT {
+	UINT32 pkt_len:16;
+	UINT32 next_vld:1;
+	UINT32 tx_burst:1;
+	UINT32 rsv0:1;
+	UINT32 pkt_80211:1;
+	UINT32 tso:1;
+	UINT32 cso:1;
+	UINT32 rsv1:2;
+	UINT32 wiv:1;
+	UINT32 QSEL:2;
+	UINT32 d_port:3;
+	UINT32 info_type:2;
+}TXINFO_NMAC_PKT;
+
+#define TXINFO_SIZE			4
+typedef union GNU_PACKED _TXINFO_STRUC{
+	struct _TXINFO_NMAC_PKT txinfo_nmac_pkt;
+	struct _TXINFO_NMAC_CMD txinfo_nmac_cmd;
+	UINT32 word;
+}TXINFO_STRUC;
+typedef	struct GNU_PACKED _TXD_STRUC {
+	/* Word	0 */
+	UINT32		SDPtr0;
+	/* Word	1 */
+	UINT32		SDLen1:14;
+	UINT32		LastSec1:1;
+	UINT32		Burst:1;
+	UINT32		SDLen0:14;
+	UINT32		LastSec0:1;
+	UINT32		DMADONE:1;
+	/*Word2 */
+	UINT32		SDPtr1;
+} TXD_STRUC, *PTXD_STRUC;
+
+
+typedef struct _RTMP_DMABUF {
+	ULONG AllocSize;
+	PVOID AllocVa;		/* TxBuf virtual address */
+	NDIS_PHYSICAL_ADDRESS AllocPa;	/* TxBuf physical address */
+} RTMP_DMABUF, *PRTMP_DMABUF;
+
+typedef struct _RTMP_DMACB {
+	ULONG AllocSize;	/* Control block size */
+	PVOID AllocVa;		/* Control block virtual address */
+	NDIS_PHYSICAL_ADDRESS AllocPa;	/* Control block physical address */
+	PNDIS_PACKET pNdisPacket;
+	PNDIS_PACKET pNextNdisPacket;
+
+	RTMP_DMABUF DmaBuf;	/* Associated DMA buffer structure */
+} RTMP_DMACB, *PRTMP_DMACB;
+
+typedef struct _RTMP_CTRL_RING {
+	RTMP_DMACB Cell[MGMT_RING_SIZE];
+	UINT32 TxCpuIdx;
+	UINT32 TxDmaIdx;
+	UINT32 TxSwFreeIdx;	/* software next free tx index */
+} RTMP_CTRL_RING, *PRTMP_CTRL_RING;
+
+typedef struct PROTECTION_FRAME_STRUCT {
+	BOOLEAN     Occupied;
+       ULONG         Triggernumber;
+       ULONG         Valid;  
+       ULONG         NodeType; 
+       ULONG         BssHashID; 
+       ULONG         FrameType; 
+} PROTECTION_FRAME_STRUCT, *PPROTECTION_FRAME_STRUCT;
+
+
+typedef	struct	{
+	USHORT		Ver:2;				// Protocol version
+	USHORT		Type:2;				// MSDU type
+	USHORT		SubType:4;			// MSDU subtype
+	USHORT		ToDs:1;				// To DS indication
+	USHORT		FrDs:1;				// From DS indication
+	USHORT		MoreFrag:1;			// More fragment bit
+	USHORT		Retry:1;			// Retry status bit
+	USHORT		PwrMgmt:1;			// Power management bit
+	USHORT		MoreData:1;			// More data bit
+	USHORT		Wep:1;				// Wep data
+	USHORT		Order:1;			// Strict order expected
+}	FRAME_CONTROL, *PFRAME_CONTROL;
+
+typedef	struct	_HEADER_802_11	{
+    FRAME_CONTROL   FC;
+    USHORT          Duration;
+    UCHAR           Addr1[MAC_ADDR_LEN];
+    UCHAR           Addr2[MAC_ADDR_LEN];
+	UCHAR			Addr3[MAC_ADDR_LEN];
+	USHORT			Frag:4;
+	USHORT			Sequence:12;
+}	HEADER_802_11, *PHEADER_802_11;
+
+
+typedef	struct GNU_PACKED _TXWI_NMAC {
+	/* Word	0 */
+	/* ex: 00 03 00 40 means txop = 3, PHYMODE = 1 */
+	UINT32		FRAG:1;		/* 1 to inform TKIP engine this is a fragment. */
+	UINT32		MIMOps:1;	/* the remote peer is in dynamic MIMO-PS mode */
+	UINT32		CFACK:1;
+	UINT32		TS:1;
+	UINT32		AMPDU:1;
+	UINT32		MpduDensity:3;
+
+	UINT32		txop:2;
+	UINT32		NDPSndRate:2; /* 0 : MCS0, 1: MCS8, 2: MCS16, 3: reserved */
+	UINT32		NDPSndBW:1; /* NDP sounding BW */
+	UINT32		Sounding:1;
+	UINT32		rsv0:1;
+	UINT32		lut_en:1;
+	
+	UINT32		MCS:7;
+	UINT32		BW:2;		/*channel bandwidth 20/40/80 MHz */
+	UINT32		ShortGI:1;
+	UINT32		STBC:1;
+	UINT32		eTxBF:1;
+	UINT32		iTxBF:1;
+	UINT32		PHYMODE:3;  
+
+	/* Word1 */
+	/* ex:  1c ff 38 00 means ACK=0, BAWinSize=7, MPDUtotalByteCnt = 0x38 */
+	UINT32		ACK:1;
+	UINT32		NSEQ:1;
+	UINT32		BAWinSize:6;
+	UINT32		wcid:8;
+	UINT32		MPDUtotalByteCnt:14;
+	UINT32		Rsv1:2;
+	
+	/*Word2 */
+	UINT32		IV;
+	
+	/*Word3 */
+	UINT32		EIV;
+
+	/* Word 4 */
+	UINT32		TxEAPId:8;
+	UINT32		TxStreamMode:8;
+	UINT32		TxPwrAdj:4;
+	UINT32		Rsv4:4;	
+	UINT32		TxPktId:8;
+}	TXWI_NMAC, *PTXWI_NMAC;
+
+typedef	union GNU_PACKED _TXWI_STRUC {
+	struct _TXWI_NMAC TXWI_N;
+	UINT32 word;
+}TXWI_STRUC;
+
+typedef struct _COEX_PROTECTION_FRAME_INFO
+{
+	ULONG					CoexOperation;
+    ULONG                   Triggernumber;   
+    ULONG                   Valid;
+    ULONG                   NodeType;
+    ULONG	            BssHashID;
+    ULONG                   FrameType;    
+} COEX_PROTECTION_FRAME_INFO, *PCOEX_PROTECTION_FRAME_INFO;
+
+typedef	struct GNU_PACKED _RXWI_NMAC {
+	/* Word 0 */
+	UINT32 wcid:8;
+	UINT32 key_idx:2;
+	UINT32 bss_idx:3;
+	UINT32 udf:3;
+	UINT32 MPDUtotalByteCnt:14; /* mpdu_total_byte = rxfceinfo_len - rxwi_len- rxinfo_len - l2pad */
+	UINT32 rsv:1;
+	UINT32 eof:1;
+
+	/* Word 1 */
+	UINT32 tid:4;
+	UINT32 sn:12;
+	UINT32 mcs:7;
+	UINT32 bw:2;
+	UINT32 sgi:1;
+	UINT32 stbc:1;
+	UINT32 e_txbf:1;
+	UINT32 i_txbf:1;
+	UINT32 phy_mode:3;
+
+	/* Word 2 */
+	UINT8 rssi[4];
+
+	/* Word 3~6 */
+	UINT8 bbp_rxinfo[16];
+}	RXWI_NMAC;
+
+typedef	union GNU_PACKED _RXWI_STRUC {
+	struct _RXWI_NMAC RXWI_N;
+}RXWI_STRUC;
+////////////////////////woody//////////////////////
+
+
 /* Debug definitions.
  * Debug output has to be enabled during compile time.
  */
@@ -84,6 +1410,48 @@
 	wiphy_dbg((dev)->hw->wiphy, "%s: EEPROM recovery - " fmt,	\
 		  __func__, ##__VA_ARGS__)
 
+#define DEBUG_PRINTK_MSG(__dev, __kernlvl, __lvl, __msg, __args...)	\
+	printk(__kernlvl "%s -> %s: %s - " __msg,			\
+	       wiphy_name((__dev)->hw->wiphy), __func__, __lvl, ##__args)
+/*
+ * Various debug levels.
+ * The debug levels PANIC and ERROR both indicate serious problems,
+ * for this reason they should never be ignored.
+ * The special ERROR_PROBE message is for messages that are generated
+ * when the rt2x00_dev is not yet initialized.
+ */
+#define PANIC(__dev, __msg, __args...) \
+	DEBUG_PRINTK_MSG(__dev, KERN_CRIT, "Panic", __msg, ##__args)
+#define ERROR(__dev, __msg, __args...)	\
+	DEBUG_PRINTK_MSG(__dev, KERN_ERR, "Error", __msg, ##__args)
+#define ERROR_PROBE(__msg, __args...) \
+	DEBUG_PRINTK_PROBE(KERN_ERR, "Error", __msg, ##__args)
+
+#ifdef CONFIG_RT2X00_DEBUG
+#define DEBUG_PRINTK(__dev, __kernlvl, __lvl, __msg, __args...)	\
+	DEBUG_PRINTK_MSG(__dev, __kernlvl, __lvl, __msg, ##__args)
+#else
+#define DEBUG_PRINTK(__dev, __kernlvl, __lvl, __msg, __args...)	\
+	do { } while (0)
+#endif /* CONFIG_RT2X00_DEBUG */
+
+#if 0
+#define vend_dbg(fmt...) printk(fmt)
+#else
+#define vend_dbg(fmt...) do {} while(0)
+#endif
+
+#define WARNING(__dev, __msg, __args...) \
+	DEBUG_PRINTK(__dev, KERN_WARNING, "Warning", __msg, ##__args)
+#define NOTICE(__dev, __msg, __args...) \
+	DEBUG_PRINTK(__dev, KERN_NOTICE, "Notice", __msg, ##__args)
+#define INFO(__dev, __msg, __args...) \
+	DEBUG_PRINTK(__dev, KERN_INFO, "Info", __msg, ##__args)
+#define DBG(__dev, __msg, __args...) \
+	DEBUG_PRINTK(__dev, KERN_DEBUG, "Debug", __msg, ##__args)
+#define EEPROM(__dev, __msg, __args...) \
+	DEBUG_PRINTK(__dev, KERN_DEBUG, "EEPROM recovery", __msg, ##__args)
+	
 /*
  * Duration calculations
  * The rate variable passed is: 100kbs.
@@ -171,6 +1539,7 @@ struct rt2x00_chip {
 #define RT5390		0x5390  /* 2.4GHz */
 #define RT5392		0x5392  /* 2.4GHz */
 #define RT5592		0x5592
+#define MT7630		0x7630
 
 	u16 rf;
 	u16 rev;
@@ -524,6 +1893,7 @@ struct rt2x00lib_ops {
 	/*
 	 * TX status tasklet handler.
 	 */
+	void (*tx8damdone_tasklet) (unsigned long data); 
 	void (*txstatus_tasklet) (unsigned long data);
 	void (*pretbtt_tasklet) (unsigned long data);
 	void (*tbtt_tasklet) (unsigned long data);
@@ -735,6 +2105,35 @@ struct rt2x00_dev {
 	 * When accessing this variable, the rt2x00dev_{pci,usb}
 	 * macros should be used for correct typecasting.
 	 */
+
+// CONFIG_ANDES_SUPPORT
+	u8 bssid[6];
+	u8 addr[6];
+	u16 ht_cap;
+	struct MCU_CTRL MCUCtrl;
+	COMMON_CONFIG    CommonCfg;
+	COEX_MODE_STRUCTURE                CoexMode;
+	PROTECTION_FRAME_STRUCT          NullFrameSpace[NULLFRAMESPACE];
+	UINT8 TXWISize;
+	RTMP_DMABUF CtrlDescRing;	/* Shared memory for CTRL descriptors */
+	RTMP_CTRL_RING CtrlRing;
+	NDIS_SPIN_LOCK CtrlRingLock;	/* Ctrl Ring spinlock */
+	NDIS_SPIN_LOCK  CalLock;
+	UCHAR connected;
+	UCHAR connect_channel;
+	COUNTER_RALINK RalinkCounters;
+	COUNTER_802_11 WlanCounters;
+	COUNTER_802_3 Counters8023;
+	ULONG TxCount;
+/* CONFIG_ANDES_SUPPORT */
+	BOOLEAN PollIdle;
+	 unsigned char alloc_len;
+	 int bprint;
+	int bscan; 
+	unsigned int int_enable_reg;
+	unsigned int int_disable_mask;
+	unsigned int int_pending;
+	u8 TxDmaIdx[4];	
 	struct device *dev;
 
 	/*
@@ -977,6 +2376,7 @@ struct rt2x00_dev {
 	/*
 	 * Tasklet for processing tx status reports (rt2800pci).
 	 */
+	struct tasklet_struct tx8damdone_tasklet;
 	struct tasklet_struct txstatus_tasklet;
 	struct tasklet_struct pretbtt_tasklet;
 	struct tasklet_struct tbtt_tasklet;
@@ -992,7 +2392,8 @@ struct rt2x00_dev {
 	 * Protect the interrupt mask register.
 	 */
 	spinlock_t irqmask_lock;
-
+	spinlock_t LockInterrupt;
+	spinlock_t Ctrl_LockInterrupt;
 	/*
 	 * List of BlockAckReq TX entries that need driver BlockAck processing.
 	 */
@@ -1474,5 +2875,160 @@ void rt2x00lib_remove_dev(struct rt2x00_dev *rt2x00dev);
 int rt2x00lib_suspend(struct rt2x00_dev *rt2x00dev, pm_message_t state);
 int rt2x00lib_resume(struct rt2x00_dev *rt2x00dev);
 #endif /* CONFIG_PM */
+
+int WaitForAsicReady(struct rt2x00_dev *rt2x00dev);
+
+void AsicRemoveSharedKeyEntry(
+	struct rt2x00_dev *rt2x00dev,
+	unsigned char		 BssIndex,
+	unsigned char	 KeyIdx);
+
+VOID MCUCtrlInit(struct rt2x00_dev *rt2x00dev);
+
+NDIS_STATUS os_alloc_mem(
+	IN VOID *pReserved,
+	OUT UCHAR **mem,
+	IN ULONG size);
+
+NDIS_STATUS os_free_mem(
+	IN VOID *pReserved,
+	IN PVOID mem);
+
+INT AsicSendCmdToAndes(struct rt2x00_dev *rt2x00dev, struct CMD_UNIT *CmdUnit);
+
+NDIS_STATUS RTMPAllocateNdisPacket(
+	IN VOID *pReserved,
+	OUT PNDIS_PACKET *ppPacket,
+	IN UCHAR *pHeader,
+	IN UINT HeaderLen,
+	IN UCHAR *pData,
+	IN UINT DataLen);
+
+INT PCIKickOutCmd(
+	struct rt2x00_dev *rt2x00dev, 
+	UCHAR *Buf, 
+	UINT32 Len);
+
+void RTMP_QueryPacketInfo(
+	IN PNDIS_PACKET pPacket,
+	OUT PACKET_INFO *info,
+	OUT UCHAR **pSrcBufVA,
+	OUT UINT *pSrcBufLen);
+
+NDIS_STATUS	RTMPAllocTxRxRingMemory(struct rt2x00_dev *rt2x00dev);
+NDIS_STATUS RTMPInitTxRxRingMemory(struct rt2x00_dev *rt2x00dev);
+VOID AsicInitTxRxRing(struct rt2x00_dev *rt2x00dev);
+VOID RTMPFreeNdisPacket(
+	IN VOID *pReserved,
+	IN PNDIS_PACKET pPacket);
+int	RTMPHandleTxRing8DmaDoneInterrupt(
+	IN struct rt2x00_dev *rt2x00dev);
+
+VOID SendAndesTFSWITCH(
+	IN struct rt2x00_dev *rt2x00dev,
+	IN UCHAR			CoexMode
+	);
+
+ra_dma_addr_t linux_pci_map_single(void *pPciDev, void *ptr, size_t size, int sd_idx, int direction);
+ra_dma_addr_t RtmpDrvPciMapSingle(
+	IN struct rt2x00_dev *rt2x00dev,
+	IN VOID *ptr,
+	IN size_t size,
+	IN INT sd_idx,
+	IN INT direction);
+ra_dma_addr_t RtmpDrvPciUnMapSingle(
+	IN struct rt2x00_dev *rt2x00dev,
+	IN ra_dma_addr_t ptr,
+	IN size_t size,
+	IN INT direction);
+#define PCI_MAP_SINGLE					RtmpDrvPciMapSingle
+#define PCI_UNMAP_SINGLE					RtmpDrvPciUnMapSingle
+VOID TDDFDDExclusiveRequest(
+        IN struct rt2x00_dev *rt2x00dev, 
+	UCHAR CoexMode 
+	);
+
+VOID SendAndesAFH(
+	IN struct rt2x00_dev *rt2x00dev,
+	IN UCHAR			BBPCurrentBW,
+	IN UCHAR			Channel,
+	IN UCHAR			CentralChannel,
+	IN BOOLEAN			Disable,
+	IN ULONG                     BssHashID);
+
+VOID BtAFHCtl(
+		IN struct rt2x00_dev *rt2x00dev,
+		IN UCHAR			BBPCurrentBW,
+		IN UCHAR			Channel,
+		IN UCHAR			CentralChannel,
+		IN BOOLEAN			Disable);
+
+VOID UpdateAndesNullFrameSpace(
+	IN struct rt2x00_dev *rt2x00dev);
+
+VOID SendAndesCoexFrameInfo(
+	IN struct rt2x00_dev *rt2x00dev, 
+	IN ULONG TriggerNumber) ;
+
+VOID EstablishFrameBundle(
+	IN	 struct rt2x00_dev *rt2x00dev,
+	IN      PUCHAR  pAddr,
+	IN      ULONG  OPMode,
+	IN      INT  WCID
+);
+
+INT AndesFunSetOP(IN struct rt2x00_dev *rt2x00dev, UINT32 FunID, UINT32 Param);
+void RTMPusecDelay(unsigned long usec);
+void MT76x0_VCO_CalibrationMode3(
+	struct rt2x00_dev *rt2x00dev);
+VOID MT76x0_Calibration(
+	IN struct rt2x00_dev *rt2x00dev,
+	IN UCHAR Channel,
+	IN BOOLEAN bPowerOn,
+	IN BOOLEAN bDoTSSI,
+	IN BOOLEAN bFullCal);
+
+VOID NICUpdateRawCounters(
+	struct rt2x00_dev *rt2x00dev);
+
+VOID SendLEDCmd(
+	struct rt2x00_dev *rt2x00dev,
+	IN ULONG	LEDMode,
+	IN ULONG	Para);
+
+void RtmpAllocDescBuf(
+	IN struct rt2x00_dev *rt2x00dev,
+	IN UINT Index,
+	IN ULONG Length,
+	IN BOOLEAN Cached,
+	OUT VOID **VirtualAddress,
+	OUT PNDIS_PHYSICAL_ADDRESS	phy_addr);
+
+VOID dumpTxWI(struct rt2x00_dev *rt2x00dev, TXWI_STRUC *pTxWI);
+void hex_dump(char *str, unsigned char *pSrcBufVA, u32 SrcBufLen);
+
+VOID SendAndesWLANStatus(
+	IN struct rt2x00_dev *rt2x00dev,
+	IN UCHAR			WlanStatus,
+	IN ULONG			PrivilegeTime, 
+	IN UCHAR                     BssHashID
+	);
+
+VOID SendAndesCCUForceMode(
+	struct rt2x00_dev *rt2x00dev,
+	IN UCHAR			CoexMode
+	);
+
+void Set_BtDump_Proc(
+	IN 	struct rt2x00_dev *rt2x00dev,
+	IN int index);
+
+VOID MLMEHook(
+	IN 	struct rt2x00_dev *rt2x00dev,
+	IN UCHAR		WlanStatus,
+	IN UCHAR              BssHashID
+	);
+
+void RTMPusecDelay(unsigned long usec);
 
 #endif /* RT2X00_H */

@@ -30,6 +30,46 @@
 #include "rt2x00.h"
 #include "rt2x00lib.h"
 
+
+#define WLAN_FUN_CTRL			0x0080
+#define MAC_CSR0			0x1000
+#define CMB_CTRL			0x0020
+#define PWR_PIN_CFG			0x1204
+
+/*
+ * WPDMA_GLO_CFG
+ */
+#define WPDMA_GLO_CFG 			0x0208
+#define WPDMA_GLO_CFG_ENABLE_TX_DMA	FIELD32(0x00000001)
+#define WPDMA_GLO_CFG_TX_DMA_BUSY    	FIELD32(0x00000002)
+#define WPDMA_GLO_CFG_ENABLE_RX_DMA	FIELD32(0x00000004)
+#define WPDMA_GLO_CFG_RX_DMA_BUSY	FIELD32(0x00000008)
+#define WPDMA_GLO_CFG_WP_DMA_BURST_SIZE	FIELD32(0x00000030)
+#define WPDMA_GLO_CFG_TX_WRITEBACK_DONE	FIELD32(0x00000040)
+#define WPDMA_GLO_CFG_BIG_ENDIAN	FIELD32(0x00000080)
+#define WPDMA_GLO_CFG_RX_HDR_SCATTER	FIELD32(0x0000ff00)
+#define WPDMA_GLO_CFG_HDR_SEG_LEN	FIELD32(0xffff0000)
+
+WLAN_FUN_CTRL_STRUC g_WlanFunCtrl;
+
+static inline void rt2x00dev_pci_register_read(struct rt2x00_dev *rt2x00dev,
+					   const unsigned int offset,
+					   u32 *value)
+{
+	*value = readl(rt2x00dev->csr.base + offset);
+}
+static inline void rt2x00dev_pci_register_write(struct rt2x00_dev *rt2x00dev,
+					    const unsigned int offset,
+					    u32 value)
+{		
+		writel(value, rt2x00dev->csr.base + offset);
+}
+
+extern void MT76x0_WLAN_ChipOnOff(
+	struct rt2x00_dev *rt2x00dev,
+	int bOn,
+	int bResetWLAN);
+
 /*
  * Utility functions.
  */
@@ -473,7 +513,7 @@ void rt2x00lib_txdone(struct queue_entry *entry,
 	entry->skb = NULL;
 	entry->flags = 0;
 
-	rt2x00dev->ops->lib->clear_entry(entry);
+	//rt2x00dev->ops->lib->clear_entry(entry);
 
 	rt2x00queue_index_inc(entry, Q_INDEX_DONE);
 
@@ -484,10 +524,10 @@ void rt2x00lib_txdone(struct queue_entry *entry,
 	 * serialized with rt2x00mac_tx(), otherwise we can wake up queue
 	 * before it was stopped.
 	 */
-	spin_lock_bh(&entry->queue->tx_lock);
+	//spin_lock_bh(&entry->queue->tx_lock);
 	if (!rt2x00queue_threshold(entry->queue))
 		rt2x00queue_unpause_queue(entry->queue);
-	spin_unlock_bh(&entry->queue->tx_lock);
+	//spin_unlock_bh(&entry->queue->tx_lock);
 }
 EXPORT_SYMBOL_GPL(rt2x00lib_txdone);
 
@@ -798,7 +838,7 @@ void rt2x00lib_rxdone(struct queue_entry *entry, gfp_t gfp)
 	rx_status->signal = rxdesc.rssi;
 	rx_status->flag = rxdesc.flags;
 	rx_status->antenna = rt2x00dev->link.ant.active.rx;
-
+	INC_COUNTER64(rt2x00dev->WlanCounters.ReceivedFragmentCount);
 	ieee80211_rx_ni(rt2x00dev->hw, entry->skb);
 
 renew_skb:
@@ -1052,7 +1092,6 @@ static int rt2x00lib_probe_hw(struct rt2x00_dev *rt2x00dev)
 	rt2x00dev->hw->extra_tx_headroom =
 		max_t(unsigned int, IEEE80211_TX_STATUS_HEADROOM,
 		      rt2x00dev->extra_tx_headroom);
-
 	/*
 	 * Take TX headroom required for alignment into account.
 	 */
@@ -1078,7 +1117,7 @@ static int rt2x00lib_probe_hw(struct rt2x00_dev *rt2x00dev)
 		 * power of 2.
 		 */
 		int kfifo_size =
-			roundup_pow_of_two(rt2x00dev->ops->tx_queues *
+			roundup_pow_of_two((rt2x00dev->ops->tx_queues+4) *
 					   rt2x00dev->tx->limit *
 					   sizeof(u32));
 
@@ -1105,7 +1144,7 @@ static int rt2x00lib_probe_hw(struct rt2x00_dev *rt2x00dev)
 	RT2X00_TASKLET_INIT(tbtt_tasklet);
 	RT2X00_TASKLET_INIT(rxdone_tasklet);
 	RT2X00_TASKLET_INIT(autowake_tasklet);
-
+	RT2X00_TASKLET_INIT(tx8damdone_tasklet);
 #undef RT2X00_TASKLET_INIT
 
 	/*
@@ -1167,7 +1206,9 @@ static int rt2x00lib_initialize(struct rt2x00_dev *rt2x00dev)
 		rt2x00queue_uninitialize(rt2x00dev);
 		return status;
 	}
-
+	status = rt2x00queue_alloc_rxskbs(rt2x00dev->rx);
+	if (status)
+		return status;
 	set_bit(DEVICE_STATE_INITIALIZED, &rt2x00dev->flags);
 
 	/*
@@ -1179,12 +1220,84 @@ static int rt2x00lib_initialize(struct rt2x00_dev *rt2x00dev)
 	return 0;
 }
 
+int rt2800_dev_wait_csr_ready(struct rt2x00_dev *rt2x00dev)
+{
+	unsigned int i = 0;
+	u32 reg;
+
+	for (i = 0; i < REGISTER_BUSY_COUNT; i++) {
+		rt2x00dev_pci_register_read(rt2x00dev, MAC_CSR0, &reg);
+		if (reg && reg != ~0)
+			return 0;
+		msleep(1);
+	}
+
+	//ERROR(rt2x00dev, "Unstable hardware.\n");
+	printk("Unstable hardware.\n");
+	return -EBUSY;
+}
+
 int rt2x00lib_start(struct rt2x00_dev *rt2x00dev)
 {
 	int retval;
+	u32 reg;
 
 	if (test_bit(DEVICE_STATE_STARTED, &rt2x00dev->flags))
 		return 0;
+
+	printk("===>%s\n",__FUNCTION__);
+
+#if 1
+	/*
+	 * Register interrupt handler.
+	 */
+	retval = request_irq(rt2x00dev->irq,
+			     rt2x00dev->ops->lib->irq_handler,
+			     IRQF_SHARED, rt2x00dev->name, rt2x00dev);
+	if (retval) {
+		ERROR(rt2x00dev, "IRQ %d allocation failed (error %d).\n",
+		      rt2x00dev->irq, retval);
+		return retval;
+	}
+#endif
+
+#if 0
+	if (g_WlanFunCtrl.field.WLAN_EN_MT7630 == 0 && rt2x00_rt(rt2x00dev, MT7630))
+		MT76x0_WLAN_ChipOnOff(rt2x00dev, 1, 0);
+#else
+  rt2x00dev_pci_register_read(rt2x00dev, WPDMA_GLO_CFG, &reg);
+	//printk(KERN_EMERG"woody(1) 0x208=0x%x\n",reg);
+	MT76x0_WLAN_ChipOnOff(rt2x00dev, 1, 1);
+	udelay(50);
+	rt2x00dev_pci_register_read(rt2x00dev, WPDMA_GLO_CFG, &reg);
+	//printk(KERN_EMERG"woody(2) 0x208=0x%x\n",reg);	
+#endif
+
+	if (rt2x00_rt(rt2x00dev, MT7630))
+	{
+		if (WaitForAsicReady(rt2x00dev) != 1)
+			return -EINVAL;
+		else
+			printk("ASIC is ready\n");
+	
+		if (rt2800_dev_wait_csr_ready(rt2x00dev))
+			return -EBUSY;
+
+
+		MCUCtrlInit(rt2x00dev);
+		rt2x00dev_pci_register_write(rt2x00dev, PWR_PIN_CFG, 0x00000000);
+		reg = 0;
+
+		rt2x00dev_pci_register_read(rt2x00dev, WPDMA_GLO_CFG, &reg);
+		reg &= 0xff0;
+		rt2x00_set_field32(&reg, WPDMA_GLO_CFG_ENABLE_TX_DMA, 0);
+		rt2x00_set_field32(&reg, WPDMA_GLO_CFG_TX_DMA_BUSY, 0);
+		rt2x00_set_field32(&reg, WPDMA_GLO_CFG_ENABLE_RX_DMA, 0);
+		rt2x00_set_field32(&reg, WPDMA_GLO_CFG_RX_DMA_BUSY, 0);
+		rt2x00_set_field32(&reg, WPDMA_GLO_CFG_TX_WRITEBACK_DONE, 1);
+		rt2x00dev_pci_register_write(rt2x00dev, WPDMA_GLO_CFG, reg);
+	}
+
 
 	/*
 	 * If this is the first interface which is added,
@@ -1210,6 +1323,17 @@ int rt2x00lib_start(struct rt2x00_dev *rt2x00dev)
 	if (retval)
 		return retval;
 
+	//return -1;
+	rt2x00dev_pci_register_write(rt2x00dev, 0x77C , 0x10000);	
+	rt2x00dev_pci_register_write(rt2x00dev, 0x780 , 0x0);
+	rt2x00dev_pci_register_write(rt2x00dev, 0x770  , 0x82);
+
+	//SendAndesWLANStatus(rt2x00dev, WLAN_Device_ON, 0, 0);	
+	//MLMEHook(rt2x00dev, WLAN_Device_ON, 0);
+	//SendAndesCCUForceMode(rt2x00dev, COEX_MODE_FDD);  
+	udelay(5000);
+	//Set_BtDump_Proc(rt2x00dev, 1);
+
 	set_bit(DEVICE_STATE_STARTED, &rt2x00dev->flags);
 
 	return 0;
@@ -1217,6 +1341,8 @@ int rt2x00lib_start(struct rt2x00_dev *rt2x00dev)
 
 void rt2x00lib_stop(struct rt2x00_dev *rt2x00dev)
 {
+	u32 reg;
+
 	if (!test_and_clear_bit(DEVICE_STATE_STARTED, &rt2x00dev->flags))
 		return;
 
@@ -1229,6 +1355,16 @@ void rt2x00lib_stop(struct rt2x00_dev *rt2x00dev)
 	rt2x00dev->intf_ap_count = 0;
 	rt2x00dev->intf_sta_count = 0;
 	rt2x00dev->intf_associated = 0;
+
+	rt2x00dev_pci_register_write(rt2x00dev, 0x77C , 0x0);	
+	rt2x00dev_pci_register_write(rt2x00dev, 0x780 , 0x0);
+	rt2x00dev_pci_register_write(rt2x00dev, 0x770  , 0x82);
+
+	rt2x00dev_pci_register_read(rt2x00dev, 0x20, &reg);	
+	printk("0x20 = 0x%x\n",reg);
+
+	rt2x00dev_pci_register_read(rt2x00dev, 0x80, &reg);	
+	printk("0x80 = 0x%x\n",reg);
 }
 
 static inline void rt2x00lib_set_if_combinations(struct rt2x00_dev *rt2x00dev)
@@ -1304,6 +1440,9 @@ int rt2x00lib_probe_dev(struct rt2x00_dev *rt2x00dev)
 	mutex_init(&rt2x00dev->csr_mutex);
 	INIT_LIST_HEAD(&rt2x00dev->bar_list);
 	spin_lock_init(&rt2x00dev->bar_list_lock);
+
+	spin_lock_init(&rt2x00dev->LockInterrupt);
+	spin_lock_init(&rt2x00dev->Ctrl_LockInterrupt);
 
 	set_bit(DEVICE_STATE_PRESENT, &rt2x00dev->flags);
 
@@ -1443,7 +1582,7 @@ void rt2x00lib_remove_dev(struct rt2x00_dev *rt2x00dev)
 	tasklet_kill(&rt2x00dev->tbtt_tasklet);
 	tasklet_kill(&rt2x00dev->rxdone_tasklet);
 	tasklet_kill(&rt2x00dev->autowake_tasklet);
-
+	tasklet_kill(&rt2x00dev->tx8damdone_tasklet);
 	/*
 	 * Uninitialize device.
 	 */
@@ -1530,6 +1669,8 @@ int rt2x00lib_resume(struct rt2x00_dev *rt2x00dev)
 	rt2x00debug_register(rt2x00dev);
 	rt2x00leds_resume(rt2x00dev);
 
+	if (rt2x00_rt(rt2x00dev, MT7630))
+		MT76x0_WLAN_ChipOnOff(rt2x00dev, 1, 1);
 	/*
 	 * We are ready again to receive requests from mac80211.
 	 */
@@ -1539,6 +1680,159 @@ int rt2x00lib_resume(struct rt2x00_dev *rt2x00dev)
 }
 EXPORT_SYMBOL_GPL(rt2x00lib_resume);
 #endif /* CONFIG_PM */
+
+
+void MT76x0_WLAN_ChipOnOff(
+	struct rt2x00_dev *rt2x00dev,
+	int bOn,
+	int bResetWLAN)
+{
+#if 1
+	WLAN_FUN_CTRL_STRUC WlanFunCtrl;
+	unsigned int MacReg = 0;
+	CMB_CTRL_STRUC CmbCtrl;
+
+	rt2x00dev_pci_register_read(rt2x00dev, WLAN_FUN_CTRL, &WlanFunCtrl.word);
+	printk("==>%s(): OnOff:%d pAd->WlanFunCtrl.word = 0x%x, Reg-WlanFunCtrl=0x%x\n",
+				__FUNCTION__, bOn, g_WlanFunCtrl.word,  WlanFunCtrl.word);
+
+	if (bResetWLAN == 1)
+	{
+		WlanFunCtrl.field.GPIO0_OUT_OE_N_MT7630=0xff;
+		WlanFunCtrl.field.GPIO0_OUT_MT7630=0xff;
+		WlanFunCtrl.field.FRC_WL_ANT_SET_MT7630=0x00;
+
+		if ( g_WlanFunCtrl.field.WLAN_EN_MT7630)
+		{
+			/*
+				Restore all HW default value and reset RF.
+			*/					
+			WlanFunCtrl.field.WLAN_RESET_MT7630 = 1;
+			WlanFunCtrl.field.WLAN_RESET_RF_MT7630 = 1;
+			printk("Reset(1) WlanFunCtrl.word = 0x%x\n", WlanFunCtrl.word);
+			rt2x00dev_pci_register_write(rt2x00dev, WLAN_FUN_CTRL, WlanFunCtrl.word);	
+			udelay(50);
+			WlanFunCtrl.field.WLAN_RESET_MT7630 = 0;
+			WlanFunCtrl.field.WLAN_RESET_RF_MT7630 = 0;
+			printk("Reset(2) WlanFunCtrl.word = 0x%x\n", WlanFunCtrl.word);
+			rt2x00dev_pci_register_write(rt2x00dev, WLAN_FUN_CTRL, WlanFunCtrl.word);
+			udelay(50);
+		}
+	}
+
+	if (bOn == 1)
+	{
+		/*
+			Enable WLAN function and clock
+			WLAN_FUN_CTRL[1:0] = 0x3
+		*/	
+		WlanFunCtrl.field.WLAN_CLK_EN_MT7630 = 1;
+		WlanFunCtrl.field.WLAN_EN_MT7630 = 1;
+	}
+	else
+	{
+		/*
+			Diable WLAN function and clock
+			WLAN_FUN_CTRL[1:0] = 0x0
+		*/
+		WlanFunCtrl.field.PCIE_APP0_CLK_REQ_MT7630 = 0;
+		WlanFunCtrl.field.WLAN_EN_MT7630 = 0;
+		WlanFunCtrl.field.WLAN_CLK_EN_MT7630 = 0;
+	}
+
+	printk("WlanFunCtrl.word = 0x%x\n", WlanFunCtrl.word);
+	rt2x00dev_pci_register_write(rt2x00dev, WLAN_FUN_CTRL, WlanFunCtrl.word);	
+	udelay(50);
+
+	if (bOn)
+	{
+		rt2x00dev_pci_register_read(rt2x00dev, MAC_CSR0, &MacReg);
+		printk("MACVersion = 0x%08x\n", MacReg);
+	}
+
+	if (bOn == 1)
+	{
+		CmbCtrl.word = 0;
+				
+		do
+		{
+			unsigned int index = 0;
+
+			do 
+			{
+				rt2x00dev_pci_register_read(rt2x00dev, CMB_CTRL, &CmbCtrl.word);
+
+				/*
+					Check status of PLL_LD & XTAL_RDY.
+					HW issue: Must check PLL_LD&XTAL_RDY when setting EEP to disable PLL power down
+				*/
+				if ((CmbCtrl.field.PLL_LD_CMB == 1) && (CmbCtrl.field.XTAL_RDY_CMB == 1))
+					break;
+
+				udelay(50);
+			} while (index++ < 200);
+
+			if (index >= 200)
+			{
+				printk("Lenny:[boundary]Check PLL_LD ..CMB_CTRL 0x%08x, index=%d!\n",
+						CmbCtrl.word, index);
+				/*
+					Disable WLAN then enable WLAN again
+				*/
+
+				WlanFunCtrl.field.PCIE_APP0_CLK_REQ_MT7630 = 0;
+				WlanFunCtrl.field.WLAN_EN_MT7630 = 0;
+				WlanFunCtrl.field.WLAN_CLK_EN_MT7630 = 0;
+				rt2x00dev_pci_register_write(rt2x00dev, WLAN_FUN_CTRL, WlanFunCtrl.word);
+				udelay(50);
+
+				WlanFunCtrl.field.WLAN_CLK_EN_MT7630 = 1;
+				WlanFunCtrl.field.WLAN_EN_MT7630 = 1;
+				rt2x00dev_pci_register_write(rt2x00dev, WLAN_FUN_CTRL, WlanFunCtrl.word);
+				udelay(50);
+			}
+			else
+			{
+				break;
+			}
+		}			
+		while (1);
+	}
+
+
+     	 rt2x00dev_pci_register_read(rt2x00dev, CMB_CTRL, &CmbCtrl.word);
+       CmbCtrl.field.AUX_OPT_Bit14_TRSW1_as_GPIO=1;
+       CmbCtrl.field.AUX_OPT_Bit11_Rsv=1;
+       rt2x00dev_pci_register_write(rt2x00dev, CMB_CTRL, CmbCtrl.word);
+
+
+	g_WlanFunCtrl.word = WlanFunCtrl.word;
+	rt2x00dev_pci_register_read(rt2x00dev, WLAN_FUN_CTRL, &WlanFunCtrl.word);
+	printk("<== %s():  pAd->WlanFunCtrl.word = 0x%x, Reg->WlanFunCtrl=0x%x!\n",
+		__FUNCTION__, g_WlanFunCtrl.word, WlanFunCtrl.word);
+#endif
+}
+
+int WaitForAsicReady(struct rt2x00_dev *rt2x00dev)
+{
+	u32 mac_val = 0, reg = 0x1000;
+	int idx = 0;
+
+
+	do
+	{
+		rt2x00dev_pci_register_read(rt2x00dev, reg, &mac_val);
+		if ((mac_val != 0x00) && (mac_val != 0xFFFFFFFF))
+			return 1;
+
+		udelay(10);
+	} while (idx++ < 100);
+
+	printk("%s(0x%x):AsicNotReady!\n",
+				__FUNCTION__, mac_val);
+	
+	return 0;
+}
 
 /*
  * rt2x00lib module information.

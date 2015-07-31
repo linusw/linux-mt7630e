@@ -30,6 +30,23 @@
 
 #include "rt2x00.h"
 #include "rt2x00lib.h"
+#include <linux/pci.h>
+
+void queue_hex_dump(char *str, unsigned char *pSrcBufVA, u32 SrcBufLen)
+{
+	unsigned char *pt;
+	int x;
+	pt = pSrcBufVA;
+	printk("%s: %p, len = %d\n", str, pSrcBufVA, SrcBufLen);
+	for (x = 0; x < SrcBufLen; x++) {
+		if (x % 16 == 0)
+			printk("0x%04x : ", x);
+		printk("%02x ", ((unsigned char)pt[x]));
+		if (x % 16 == 15)
+			printk("\n");
+	}
+	printk("\n");
+}
 
 struct sk_buff *rt2x00queue_alloc_rxskb(struct queue_entry *entry, gfp_t gfp)
 {
@@ -559,8 +576,10 @@ static void rt2x00queue_kick_tx_queue(struct data_queue *queue,
 	 *	2) Rule 1 can be broken when the available entries
 	 *	   in the queue are less then a certain threshold.
 	 */
+#if 0	 
 	if (rt2x00queue_threshold(queue) ||
 	    !test_bit(ENTRY_TXD_BURST, &txdesc->flags))
+#endif
 		queue->rt2x00dev->ops->lib->kick_queue(queue);
 }
 
@@ -919,6 +938,16 @@ void rt2x00queue_pause_queue(struct data_queue *queue)
 }
 EXPORT_SYMBOL_GPL(rt2x00queue_pause_queue);
 
+void rt2x00queue_pause_queue(struct data_queue *queue)
+{
+	if (!test_bit(DEVICE_STATE_PRESENT, &queue->rt2x00dev->flags) ||
+	    !test_bit(QUEUE_STARTED, &queue->flags) ||
+	    test_and_set_bit(QUEUE_PAUSED, &queue->flags))
+		return;
+
+	rt2x00queue_pause_queue_nocheck(queue);
+}
+
 void rt2x00queue_unpause_queue(struct data_queue *queue)
 {
 	if (!test_bit(DEVICE_STATE_PRESENT, &queue->rt2x00dev->flags) ||
@@ -1144,7 +1173,7 @@ static void rt2x00queue_free_skbs(struct data_queue *queue)
 	}
 }
 
-static int rt2x00queue_alloc_rxskbs(struct data_queue *queue)
+int rt2x00queue_alloc_rxskbs(struct data_queue *queue)
 {
 	unsigned int i;
 	struct sk_buff *skb;
@@ -1183,11 +1212,14 @@ int rt2x00queue_initialize(struct rt2x00_dev *rt2x00dev)
 		if (status)
 			goto exit;
 	}
-
+#if 0
 	status = rt2x00queue_alloc_rxskbs(rt2x00dev->rx);
 	if (status)
 		goto exit;
-
+#endif	
+	status =RTMPInitTxRxRingMemory(rt2x00dev);
+	if (status)
+		goto exit;
 	return 0;
 
 exit:

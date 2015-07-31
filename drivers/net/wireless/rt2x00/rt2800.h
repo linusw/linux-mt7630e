@@ -78,6 +78,44 @@
 #define RF5372				0x5372
 #define RF5390				0x5390
 #define RF5392				0x5392
+#define RF7630				0x7630
+
+
+
+#define BIT0		(1 << 0)
+#define BIT1		(1 << 1)
+#define BIT2		(1 << 2)
+#define BIT3		(1 << 3)
+#define BIT4		(1 << 4)
+#define BIT5		(1 << 5)
+#define BIT6		(1 << 6)
+#define BIT7		(1 << 7)
+#define BIT8		(1 << 8)
+#define BIT9		(1 << 9)
+#define BIT10	(1 << 10)
+#define BIT11	(1 << 11)
+#define BIT12	(1 << 12)
+#define BIT13	(1 << 13)
+#define BIT14	(1 << 14)
+#define BIT15	(1 << 15)
+#define BIT16	(1 << 16)
+#define BIT17	(1 << 17)
+#define BIT18	(1 << 18)
+#define BIT19	(1 << 19)
+#define BIT20	(1 << 20)
+#define BIT21	(1 << 21)
+#define BIT22	(1 << 22)
+#define BIT23	(1 << 23)
+#define BIT24	(1 << 24)
+#define BIT25	(1 << 25)
+#define BIT26	(1 << 26)
+#define BIT27	(1 << 27)
+#define BIT28	(1 << 28)
+#define BIT29	(1 << 29)
+#define BIT30	(1 << 30)
+#define BIT31	(1 << 31)
+
+
 
 /*
  * Chipset revisions.
@@ -228,6 +266,12 @@
 #define BT_COEX_CFG0		FIELD32(0x00ff0000)
 #define WL_COEX_CFG1		FIELD32(0x0000ff00)
 #define WL_COEX_CFG0		FIELD32(0x000000ff)
+
+/*
+ * COEX_CFG_3
+ */
+#define COEXCFG3 0x4C
+
 /*
  * PLL_CTRL_CFG
  * PLL configuration register
@@ -303,6 +347,38 @@
  * Write one to clear corresponding bit.
  * TX_FIFO_STATUS: FIFO Statistics is full, sw should read TX_STA_FIFO
  */
+#define INT_R0_DONE		(0x00000001)
+#define INT_R1_DONE		(0x00000002)
+#define INT_T0_DONE		(0x00000010)
+#define INT_T1_DONE		(0x00000020)
+#define INT_T2_DONE		(0x00000040)
+#define INT_T3_DONE		(0x00000080)
+#define INT_T4_DONE		(0x00000100)
+#define INT_T5_DONE		(0x00000200)
+#define INT_T6_DONE		(0x00000400)
+#define INT_T7_DONE		(0x00000800)
+#define INT_T8_DONE		(0x00001000)
+#define INT_T9_DONE		(0x00002000)
+#define INT_RESVD		(0x00004000 |0x00008000)
+#define INT_RX_COHE		(0x00010000)
+#define INT_TX_COHE		(0x00020000)
+#define INT_ANY_COH		(0x00040000)
+#define INT_MCU_CMD	(0x00080000)
+#define INT_TBTT_ISR		(0x00100000)
+#define INT_PRE_TBTT		(0x00200000)
+#define INT_TX_STAT		(0x00400000)
+#define INT_AUTO_WAKE	(0x00800000)
+#define INT_GP_TIMER	(0x01000000)
+#define INT_RESVD_2		(0x02000000)
+#define INT_RX_DLY		(0x04000000)
+#define INT_TX_DLY		(0x08000000)
+
+#define DELAYINTMASK	0x0DFF3FF3
+#define INTMASK			0x0DFF3FF3
+#define RxINT			(INT_R0_DONE | INT_R1_DONE /* | INT_RX_DLY */)
+#define TxDataInt		(INT_T0_DONE | INT_T1_DONE | INT_T2_DONE | INT_T3_DONE /*| INT_TX_DLY*/)
+#define TxMgmtInt		(INT_T9_DONE /*| INT_TX_DLY*/)
+
 #define INT_SOURCE_CSR			0x0200
 #define INT_SOURCE_CSR_RXDELAYINT	FIELD32(0x00000001)
 #define INT_SOURCE_CSR_TXDELAYINT	FIELD32(0x00000002)
@@ -322,6 +398,26 @@
 #define INT_SOURCE_CSR_GPTIMER		FIELD32(0x00008000)
 #define INT_SOURCE_CSR_RX_COHERENT	FIELD32(0x00010000)
 #define INT_SOURCE_CSR_TX_COHERENT	FIELD32(0x00020000)
+
+#define INT_SOURCE_CSR_7630_RXDELAYINT	FIELD32(INT_RX_DLY)
+#define INT_SOURCE_CSR_7630_TXDELAYINT	FIELD32(INT_TX_DLY)
+#define INT_SOURCE_CSR_7630_RX_DONE		FIELD32((INT_R0_DONE || INT_R1_DONE ))
+#define INT_SOURCE_CSR_7630_AC0_DMA_DONE	FIELD32(INT_T0_DONE)
+#define INT_SOURCE_CSR_7630_AC1_DMA_DONE	FIELD32(INT_T1_DONE)
+#define INT_SOURCE_CSR_7630_AC2_DMA_DONE	FIELD32(INT_T2_DONE)
+#define INT_SOURCE_CSR_7630_AC3_DMA_DONE	FIELD32(INT_T3_DONE)
+#define INT_SOURCE_CSR_7630_HCCA_DMA_DONE	FIELD32(INT_T8_DONE)
+#define INT_SOURCE_CSR_7630_MGMT_DMA_DONE	FIELD32(INT_T9_DONE)
+#define INT_SOURCE_CSR_7630_MCU_COMMAND	FIELD32(INT_MCU_CMD)
+#define INT_SOURCE_CSR_7630_RXTX_COHERENT	FIELD32(INT_ANY_COH)
+#define INT_SOURCE_CSR_7630_TBTT		FIELD32(INT_TBTT_ISR)
+#define INT_SOURCE_CSR_7630_PRE_TBTT		FIELD32(INT_PRE_TBTT)
+#define INT_SOURCE_CSR_7630_TX_FIFO_STATUS	FIELD32(INT_TX_STAT)
+#define INT_SOURCE_CSR_7630_AUTO_WAKEUP	FIELD32(INT_AUTO_WAKE)
+#define INT_SOURCE_CSR_7630_GPTIMER		FIELD32(INT_GP_TIMER)
+#define INT_SOURCE_CSR_7630_RX_COHERENT	FIELD32(INT_RX_COHE)
+#define INT_SOURCE_CSR_7630_TX_COHERENT	FIELD32(INT_TX_COHE)
+
 
 /*
  * INT_MASK_CSR: Interrupt MASK register. 1: the interrupt is mask OFF.
@@ -345,6 +441,27 @@
 #define INT_MASK_CSR_GPTIMER		FIELD32(0x00008000)
 #define INT_MASK_CSR_RX_COHERENT	FIELD32(0x00010000)
 #define INT_MASK_CSR_TX_COHERENT	FIELD32(0x00020000)
+
+
+#define INT_MASK_CSR_7630_RXDELAYINT		FIELD32(INT_RX_DLY)
+#define INT_MASK_CSR_7630_TXDELAYINT		FIELD32(INT_TX_DLY)
+#define INT_MASK_CSR_7630_RX_DONE			FIELD32(INT_R0_DONE || INT_R1_DONE)
+#define INT_MASK_CSR_7630_AC0_DMA_DONE	FIELD32(INT_T0_DONE)
+#define INT_MASK_CSR_7630_AC1_DMA_DONE	FIELD32(INT_T1_DONE)
+#define INT_MASK_CSR_7630_AC2_DMA_DONE	FIELD32(INT_T2_DONE)
+#define INT_MASK_CSR_7630_AC3_DMA_DONE	FIELD32(INT_T3_DONE)
+#define INT_MASK_CSR_7630_HCCA_DMA_DONE	FIELD32(INT_T4_DONE)
+#define INT_MASK_CSR_7630_MGMT_DMA_DONE	FIELD32(INT_T5_DONE)
+#define INT_MASK_CSR_7630_MCU_COMMAND	FIELD32(INT_MCU_CMD)
+#define INT_MASK_CSR_7630_RXTX_COHERENT	FIELD32(INT_ANY_COH)
+#define INT_MASK_CSR_7630_TBTT				FIELD32(INT_TBTT_ISR)
+#define INT_MASK_CSR_7630_PRE_TBTT		FIELD32(INT_PRE_TBTT)
+#define INT_MASK_CSR_7630_TX_FIFO_STATUS	FIELD32(INT_TX_STAT)
+#define INT_MASK_CSR_7630_AUTO_WAKEUP	FIELD32(INT_AUTO_WAKE)
+#define INT_MASK_CSR_7630_GPTIMER			FIELD32(INT_GP_TIMER)
+#define INT_MASK_CSR_7630_RX_COHERENT	FIELD32(INT_RX_COHE)
+#define INT_MASK_CSR_7630_TX_COHERENT	FIELD32(INT_TX_COHE)
+
 
 /*
  * WPDMA_GLO_CFG
@@ -530,6 +647,10 @@
 #define RX_CRX_IDX			0x0298
 #define RX_DRX_IDX			0x029c
 
+
+#define TX_CHAN_BASE_1		(TX_RING_BASE + RINGREG_DIFF * 0)
+#define TX_CHAN_BASE_2		(TX_RING_BASE + RINGREG_DIFF * 6)
+
 /*
  * USB_DMA_CFG
  * RX_BULK_AGG_TIMEOUT: Rx Bulk Aggregation TimeOut in unit of 33ns.
@@ -591,10 +712,80 @@
 #define PBF_INT_STA			0x0414
 #define PBF_INT_ENA			0x0418
 
+#define PBF_CFG_7630			0x0404
+#define PBF_MAX_PCNT_7630			0x0408
+#define TX_MAX_PCNT	0x0408
+#define RX_MAX_PCNT	0x040c
+#define RXQ_STA			0x0430
+#define TXQ_STA			0x0434
+
+#define BCN_OFFSET0_7630	0x041c
+#define BCN_OFFSET1_7630	0x0420
+#define BCN_OFFSET2_7630	0x0424
+#define BCN_OFFSET3_7630	0x0428
+
+#define FCE_PSE_CTRL	0x0800
+#define FCE_PARAMETERS	0x0804
+#define FCE_CSO			0x0808
+#define FCE_L2_STUFF	0x080c
+#define TX_CPU_PORT_FROM_FCE_BASE_PTR		0x09A0
+#define TX_CPU_PORT_FROM_FCE_MAX_COUNT		0x09A4
+#define FCE_PDMA_GLOBAL_CONF				0x09C4
+#define TX_CPU_PORT_FROM_FCE_CPU_DESC_INDEX 0x09A8
+#define FCE_SKIP_FS							0x0A6C
+#define PER_PORT_PAUSE_ENABLE_CONTROL1		0x0A38
+
+#define AMPDU_MAX_LEN_20M1S	0x1030
+#define AMPDU_MAX_LEN_20M2S	0x1034
+#define AMPDU_MAX_LEN_40M1S	0x1038
+#define AMPDU_MAX_LEN_40M2S	0x103c
+#define AMPDU_MAX_LEN			0x1040
+
+#define HEADER_TRANS_CTRL_REG	0x0260
+#define TSO_CTRL	0x0250
+
+#define AUX_CLK_CFG		0x120C
+#define BB_PA_MODE_CFG0	0x1214
+#define BB_PA_MODE_CFG1	0x1218
+#define RF_PA_MODE_CFG0 0x121C
+#define RF_PA_MODE_CFG1	0x1220
+
+#define TX_ALC_CFG_1	0x13B4
+#define TX0_RF_GAIN_CORR	0x13A0
+#define TX0_RF_GAIN_ATTEN	0x13A8
+#define TX0_BB_GAIN_ATTEN	0x13C0
+#define TX_ALC_VGA3			0x13C8
+#define TX_PWR_CFG_5		0x1384
+#define TX_PWR_CFG_6		0x1388
+#define TX_PWR_CFG_7		0x13D4
+#define TX_PWR_CFG_8		0x13D8
+#define TX_PWR_CFG_9		0x13DC
+#define EXT_CCA_CFG			0x141c
+#define WMM_CTRL	0x0230
+
+#define RF_G_BAND 		0x0100
+#define RF_A_BAND 		0x0200
+#define RF_A_BAND_LB	0x0400
+#define RF_A_BAND_MB	0x0800
+#define RF_A_BAND_HB	0x1000
+#define RF_A_BAND_11J	0x2000
+
+#define RF_BW_20	1
+#define RF_BW_40	2
+#define RF_BW_10	4
+#define RF_BW_80	8
+
+
+/* b'00: 2.4G+5G external PA, b'01: 5G external PA, b'10: 2.4G external PA, b'11: Internal PA */
+#define EXT_PA_2G_5G		0x0
+#define EXT_PA_5G_ONLY		0x1
+#define EXT_PA_2G_ONLY		0x2
+#define INT_PA_2G_5G		0x3
 /*
  * BCN_OFFSET0:
  */
 #define BCN_OFFSET0			0x042c
+#define BCN_OFFSET0_7630		0x041c
 #define BCN_OFFSET0_BCN0		FIELD32(0x000000ff)
 #define BCN_OFFSET0_BCN1		FIELD32(0x0000ff00)
 #define BCN_OFFSET0_BCN2		FIELD32(0x00ff0000)
@@ -604,6 +795,7 @@
  * BCN_OFFSET1:
  */
 #define BCN_OFFSET1			0x0430
+#define BCN_OFFSET1_7630		0x0420
 #define BCN_OFFSET1_BCN4		FIELD32(0x000000ff)
 #define BCN_OFFSET1_BCN5		FIELD32(0x0000ff00)
 #define BCN_OFFSET1_BCN6		FIELD32(0x00ff0000)
@@ -636,6 +828,11 @@
 #define RF_CSR_CFG_REGNUM		FIELD32(0x00003f00)
 #define RF_CSR_CFG_WRITE		FIELD32(0x00010000)
 #define RF_CSR_CFG_BUSY			FIELD32(0x00020000)
+#define RF_CSR_CFG_BUSY_MT7630		FIELD32(0x80000000)
+#define RF_CSR_CFG_WRITE_MT7630		FIELD32(0x40000000)
+#define RF_CSR_CFG_BANK_MT7630		FIELD32(0x00038000)
+#define RF_CSR_CFG_REG_ID_MT7630	FIELD32(0x00007f00)
+#define RF_CSR_CFG_DATA_MT7630		FIELD32(0x000000ff)
 
 /*
  * EFUSE_CSR: RT30x0 EEPROM
@@ -1867,6 +2064,15 @@
 #define SHARED_KEY_TABLE_BASE		0x6c00
 #define SHARED_KEY_MODE_BASE		0x7000
 
+#define MAC_WCID_BASE_7630 				0x1800
+#define PAIRWISE_KEY_TABLE_BASE_7630		0x8000
+#define MAC_IVEIV_TABLE_BASE_7630			0xa000
+#define MAC_WCID_ATTRIBUTE_BASE_7630		0xa800
+#define SHARED_KEY_TABLE_BASE_7630		0xac00
+#define SHARED_KEY_MODE_BASE_7630		0xb000
+
+
+
 #define MAC_WCID_ENTRY(__idx) \
 	(MAC_WCID_BASE + ((__idx) * sizeof(struct mac_wcid_entry)))
 #define PAIRWISE_KEY_ENTRY(__idx) \
@@ -1879,6 +2085,21 @@
 	(SHARED_KEY_TABLE_BASE + ((__idx) * sizeof(struct hw_key_entry)))
 #define SHARED_KEY_MODE_ENTRY(__idx) \
 	(SHARED_KEY_MODE_BASE + ((__idx) * sizeof(u32)))
+
+
+#define MAC_WCID_ENTRY_7630(__idx) \
+	(MAC_WCID_BASE_7630 + ((__idx) * sizeof(struct mac_wcid_entry)))
+#define PAIRWISE_KEY_ENTRY_7630(__idx) \
+	(PAIRWISE_KEY_TABLE_BASE_7630 + ((__idx) * sizeof(struct hw_key_entry)))
+#define MAC_IVEIV_ENTRY_7630(__idx) \
+	(MAC_IVEIV_TABLE_BASE_7630 + ((__idx) * sizeof(struct mac_iveiv_entry)))
+#define MAC_WCID_ATTR_ENTRY_7630(__idx) \
+	(MAC_WCID_ATTRIBUTE_BASE_7630 + ((__idx) * sizeof(u32)))
+#define SHARED_KEY_ENTRY_7630(__idx) \
+	(SHARED_KEY_TABLE_BASE_7630 + ((__idx) * sizeof(struct hw_key_entry)))
+#define SHARED_KEY_MODE_ENTRY_7630(__idx) \
+	(SHARED_KEY_MODE_BASE_7630 + ((__idx) * sizeof(u32)))
+
 
 struct mac_wcid_entry {
 	u8 mac[6];
@@ -2021,6 +2242,23 @@ struct mac_iveiv_entry {
 #define HW_BEACON_BASE6			0x5dc0
 #define HW_BEACON_BASE7			0x5bc0
 
+#define HW_BEACON_BASE0_7630			0xc000
+#define HW_BEACON_BASE1_7630			0xc200
+#define HW_BEACON_BASE2_7630			0xc400
+#define HW_BEACON_BASE3_7630			0xc600
+#define HW_BEACON_BASE4_7630			0xc800
+#define HW_BEACON_BASE5_7630			0xca00
+#define HW_BEACON_BASE6_7630			0xcc00
+#define HW_BEACON_BASE7_7630			0xce00
+#define HW_BEACON_BASE8_7630			0xd000
+#define HW_BEACON_BASE9_7630			0xd200
+#define HW_BEACON_BASE10_7630			0xd400
+#define HW_BEACON_BASE11_7630			0xd600
+#define HW_BEACON_BASE12_7630			0xd800
+#define HW_BEACON_BASE13_7630			0xda00
+#define HW_BEACON_BASE14_7630			0xdc00
+#define HW_BEACON_BASE15_7630			0xde00
+
 #define HW_BEACON_BASE(__index) \
 	(((__index) < 4) ? (HW_BEACON_BASE0 + (__index * 0x0200)) : \
 	  (((__index) < 6) ? (HW_BEACON_BASE4 + ((__index - 4) * 0x0200)) : \
@@ -2117,6 +2355,288 @@ struct mac_iveiv_entry {
  * BBP 254: unknown
  */
 #define BBP254_BIT7			FIELD8(0x80)
+
+
+/*
+ * BBP For MT7630
+ */
+#define BBP_CORE	0x2000
+#define BBP_IBI		0x2100
+#define BBP_AGC1	0x2300
+#define BBP_TXC		0x2400
+#define BBP_RXC		0x2500
+#define BBP_TXO		0x2600
+#define BBP_TXBE	0x2700
+#define BBP_RXFE	0x2800
+#define BBP_RXO		0x2900
+#define BBP_DFS		0x2a00
+#define BBP_TR		0x2b00
+#define BBP_CAL		0x2c00
+#define BBP_DSC		0x2e00
+#define BBP_PFMU	0x2f00
+
+
+/* 0x2000 ~ */
+#define CORE_R0		(BBP_CORE + 0x00)
+#define CORE_R1		(BBP_CORE + 0x04)
+#define CORE_R4		(BBP_CORE + 0x10)
+#define CORE_R24	(BBP_CORE + 0x60)
+#define CORE_R32	(BBP_CORE + 0x80)
+#define CORE_R34	(BBP_CORE + 0x88)
+#define CORE_R35	(BBP_CORE + 0x8c)
+#define CORE_R42	(BBP_CORE + 0xa8)
+#define CORE_R44	(BBP_CORE + 0xb0)
+
+/* 0x2100 ~ */
+#define IBI_R0		(BBP_IBI + 0x00)
+#define IBI_R1		(BBP_IBI + 0x04)
+#define IBI_R2		(BBP_IBI + 0x08)
+#define IBI_R3		(BBP_IBI + 0x0c)
+#define IBI_R4		(BBP_IBI + 0x10)
+#define IBI_R5		(BBP_IBI + 0x14)
+#define IBI_R6		(BBP_IBI + 0x18)
+#define IBI_R7		(BBP_IBI + 0x1c)
+#define IBI_R9		(BBP_IBI + 0x24)
+#define IBI_R11		(BBP_IBI + 0x2c)
+
+/* 0x2300 ~ */
+#define AGC1_R0		(BBP_AGC1 + 0x00)
+#define AGC1_R1		(BBP_AGC1 + 0x04)
+#define AGC1_R2		(BBP_AGC1 + 0x08)
+#define AGC1_R4		(BBP_AGC1 + 0x10)
+#define AGC1_R5		(BBP_AGC1 + 0x14)
+#define AGC1_R6		(BBP_AGC1 + 0x18)
+#define AGC1_R8		(BBP_AGC1 + 0x20)
+#define AGC1_R9		(BBP_AGC1 + 0x24)
+#define AGC1_R12	(BBP_AGC1 + 0x30)
+#define AGC1_R13	(BBP_AGC1 + 0x34)
+#define AGC1_R14	(BBP_AGC1 + 0x38)
+#define AGC1_R15	(BBP_AGC1 + 0x3C)
+#define AGC1_R16	(BBP_AGC1 + 0x40)
+#define AGC1_R18	(BBP_AGC1 + 0x48)
+#define AGC1_R19	(BBP_AGC1 + 0x4c)
+#define AGC1_R20	(BBP_AGC1 + 0x50)
+#define AGC1_R21	(BBP_AGC1 + 0x54)
+#define AGC1_R22	(BBP_AGC1 + 0x58)
+#define AGC1_R23	(BBP_AGC1 + 0x5c)
+#define AGC1_R24	(BBP_AGC1 + 0x60)
+#define AGC1_R25	(BBP_AGC1 + 0x64)
+#define AGC1_R26	(BBP_AGC1 + 0x68)
+#define AGC1_R27	(BBP_AGC1 + 0x6c)
+#define AGC1_R28	(BBP_AGC1 + 0x70)
+#define AGC1_R30	(BBP_AGC1 + 0x78)
+#define AGC1_R31	(BBP_AGC1 + 0x7c)
+#define AGC1_R32	(BBP_AGC1 + 0x80)
+#define AGC1_R33	(BBP_AGC1 + 0x84)
+#define AGC1_R34	(BBP_AGC1 + 0x88)
+#define AGC1_R35	(BBP_AGC1 + 0x8c)
+#define AGC1_R37	(BBP_AGC1 + 0x94)
+#define AGC1_R39	(BBP_AGC1 + 0x9c)
+#define AGC1_R41	(BBP_AGC1 + 0xa4)
+#define AGC1_R43	(BBP_AGC1 + 0xac)
+#define AGC1_R45	(BBP_AGC1 + 0xb4)
+#define AGC1_R47	(BBP_AGC1 + 0xbc)
+#define AGC1_R49	(BBP_AGC1 + 0xc4)
+#define AGC1_R51	(BBP_AGC1 + 0xcc)
+#define AGC1_R53	(BBP_AGC1 + 0xd4)
+#define AGC1_R55	(BBP_AGC1 + 0xdc)
+#define AGC1_R57	(BBP_AGC1 + 0xe4)
+#define AGC1_R58	(BBP_AGC1 + 0xe8)
+#define AGC1_R59	(BBP_AGC1 + 0xec)
+#define AGC1_R60	(BBP_AGC1 + 0xf0)
+#define AGC1_R61	(BBP_AGC1 + 0xf4)
+#define AGC1_R62	(BBP_AGC1 + 0xf8)
+#define AGC1_R63	(BBP_AGC1 + 0xfc)
+
+/* 0x2400 ~ */
+#define TXC_R0		(BBP_TXC + 0x00)
+#define TXC_R1		(BBP_TXC + 0x04)
+#define TXC_R2		(BBP_TXC + 0x08)
+
+/* 0x2500 ~ */
+#define RXC_R0		(BBP_RXC + 0x00)
+#define RXC_R1		(BBP_RXC + 0x04)
+#define RXC_R2		(BBP_RXC + 0x08)
+#define RXC_R3		(BBP_RXC + 0x0c)
+#define RXC_R4		(BBP_RXC + 0x10)
+#define RXC_R5		(BBP_RXC + 0x14)
+#define RXC_R7		(BBP_RXC + 0x1C)
+
+/* 0x2600 ~ */
+#define TXO_R0		(BBP_TXO + 0x00)
+#define TXO_R1		(BBP_TXO + 0x04)
+#define TXO_R2		(BBP_TXO + 0x08)
+#define TXO_R3		(BBP_TXO + 0x0c)
+#define TXO_R4		(BBP_TXO + 0x10)
+#define TXO_R5		(BBP_TXO + 0x14)
+#define TXO_R6		(BBP_TXO + 0x18)
+#define TXO_R7		(BBP_TXO + 0x1c)
+#define TXO_R8		(BBP_TXO + 0x20)
+
+/* 0x2700 ~ */
+#define TXBE_R0		(BBP_TXBE + 0x00)
+#define TXBE_R1		(BBP_TXBE + 0x04)
+#define TXBE_R2		(BBP_TXBE + 0x08)
+#define TXBE_R3		(BBP_TXBE + 0x0c)
+#define TXBE_R4		(BBP_TXBE + 0x10)
+#define TXBE_R5		(BBP_TXBE + 0x14)
+#define TXBE_R6		(BBP_TXBE + 0x18)
+#define TXBE_R8		(BBP_TXBE + 0x20)
+#define TXBE_R9		(BBP_TXBE + 0x24)
+#define TXBE_R10	(BBP_TXBE + 0x28)
+#define TXBE_R12	(BBP_TXBE + 0x30)
+#define TXBE_R13	(BBP_TXBE + 0x34)
+#define TXBE_R14	(BBP_TXBE + 0x38)
+#define TXBE_R15	(BBP_TXBE + 0x3c)
+#define TXBE_R16	(BBP_TXBE + 0x40)
+#define TXBE_R17	(BBP_TXBE + 0x44)
+
+/* 0x2800 ~ */
+#define RXFE_R0		(BBP_RXFE + 0x00)
+#define RXFE_R1		(BBP_RXFE + 0x04)
+#define RXFE_R2		(BBP_RXFE + 0x08)
+#define RXFE_R3		(BBP_RXFE + 0x0c)
+#define RXFE_R4		(BBP_RXFE + 0x10)
+
+/* 0x2900 ~ */
+#define RXO_R9		(BBP_RXO + 0x24)
+#define RXO_R13		(BBP_RXO + 0x34)
+#define RXO_R14		(BBP_RXO + 0x38)
+#define RXO_R15		(BBP_RXO + 0x3c)
+#define RXO_R16		(BBP_RXO + 0x40)
+#define RXO_R17		(BBP_RXO + 0x44)
+#define RXO_R18		(BBP_RXO + 0x48)
+#define RXO_R19		(BBP_RXO + 0x4C)
+#define RXO_R20		(BBP_RXO + 0x50)
+#define RXO_R21		(BBP_RXO + 0x54)
+#define RXO_R24		(BBP_RXO + 0x60)
+#define RXO_R28		(BBP_RXO + 0x70)
+#define RXO_R29		(BBP_RXO + 0x74)
+
+/* 0x2a00 ~ */
+#define DFS_R0		(BBP_DFS + 0x00)
+#define DFS_R1		(BBP_DFS + 0x04)
+#define DFS_R2		(BBP_DFS + 0x08)
+#define DFS_R3		(BBP_DFS + 0x0c)
+#define DFS_R4		(BBP_DFS + 0x10)
+#define DFS_R5		(BBP_DFS + 0x14)
+#define DFS_R7		(BBP_DFS + 0x1c)
+#define DFS_R9		(BBP_DFS + 0x24)
+#define DFS_R11		(BBP_DFS + 0x2c)
+#define DFS_R13		(BBP_DFS + 0x34)
+#define DFS_R14		(BBP_DFS + 0x38)
+#define DFS_R15		(BBP_DFS + 0x3c)
+#define DFS_R17		(BBP_DFS + 0x44)
+#define DFS_R19		(BBP_DFS + 0x4c)
+#define DFS_R20		(BBP_DFS + 0x50)
+#define DFS_R22		(BBP_DFS + 0x58)
+#define DFS_R23		(BBP_DFS + 0x5c)
+#define DFS_R25		(BBP_DFS + 0x64)
+#define DFS_R26		(BBP_DFS + 0x68)
+#define DFS_R28		(BBP_DFS + 0x70)
+#define DFS_R30		(BBP_DFS + 0x78)
+#define DFS_R31		(BBP_DFS + 0x7c)
+#define DFS_R32		(BBP_DFS + 0x80)
+#define DFS_R36		(BBP_DFS + 0x90)
+#define DFS_R37		(BBP_DFS + 0x94)
+
+/* 0x2b00 ~ */
+#define TR_R0		(BBP_TR + 0x00)
+#define TR_R1		(BBP_TR + 0x04)
+#define TR_R2		(BBP_TR + 0x08)
+#define TR_R3		(BBP_TR + 0x0c)
+#define TR_R4		(BBP_TR + 0x10)
+#define TR_R5		(BBP_TR + 0x14)
+#define TR_R6		(BBP_TR + 0x18)
+
+/* 0x2c00 ~ */
+#define CAL_R0		(BBP_CAL + 0x00)
+#define CAL_R1		(BBP_CAL + 0x04)
+#define CAL_R2		(BBP_CAL + 0x08)
+#define CAL_R3		(BBP_CAL + 0x0c)
+#define CAL_R4		(BBP_CAL + 0x10)
+#define CAL_R5		(BBP_CAL + 0x14)
+#define CAL_R6		(BBP_CAL + 0x18)
+#define CAL_R7		(BBP_CAL + 0x1C)
+#define CAL_R8		(BBP_CAL + 0x20)
+#define CAL_R9		(BBP_CAL + 0x24)
+#define CAL_R10		(BBP_CAL + 0x28)
+#define CAL_R11		(BBP_CAL + 0x2C)
+#define CAL_R12		(BBP_CAL + 0x30)
+#define CAL_R13		(BBP_CAL + 0x34)
+#define CAL_R14		(BBP_CAL + 0x38)
+#define CAL_R15		(BBP_CAL + 0x3C)
+#define CAL_R16		(BBP_CAL + 0x40)
+#define CAL_R17		(BBP_CAL + 0x44)
+#define CAL_R18		(BBP_CAL + 0x48)
+#define CAL_R19		(BBP_CAL + 0x4C)
+#define CAL_R20		(BBP_CAL + 0x50)
+#define CAL_R21		(BBP_CAL + 0x54)
+#define CAL_R22		(BBP_CAL + 0x58)
+#define CAL_R23		(BBP_CAL + 0x5C)
+#define CAL_R24		(BBP_CAL + 0x60)
+#define CAL_R25		(BBP_CAL + 0x64)
+#define CAL_R26		(BBP_CAL + 0x68)
+#define CAL_R27		(BBP_CAL + 0x6C)
+#define CAL_R28		(BBP_CAL + 0x70)
+#define CAL_R29		(BBP_CAL + 0x74)
+#define CAL_R30		(BBP_CAL + 0x78)
+#define CAL_R31		(BBP_CAL + 0x7C)
+#define CAL_R32		(BBP_CAL + 0x80)
+#define CAL_R33		(BBP_CAL + 0x84)
+#define CAL_R34		(BBP_CAL + 0x88)
+#define CAL_R35		(BBP_CAL + 0x8C)
+#define CAL_R36		(BBP_CAL + 0x90)
+#define CAL_R37		(BBP_CAL + 0x94)
+#define CAL_R38		(BBP_CAL + 0x98)
+#define CAL_R39		(BBP_CAL + 0x9C)
+#define CAL_R40		(BBP_CAL + 0xA0)
+#define CAL_R41		(BBP_CAL + 0xA4)
+#define CAL_R42		(BBP_CAL + 0xA8)
+#define CAL_R43		(BBP_CAL + 0xAC)
+#define CAL_R44		(BBP_CAL + 0xB0)
+#define CAL_R45		(BBP_CAL + 0xB4)
+#define CAL_R46		(BBP_CAL + 0xB8)
+#define CAL_R47		(BBP_CAL + 0xBC)
+#define CAL_R48		(BBP_CAL + 0xC0)
+#define CAL_R49		(BBP_CAL + 0xC4)
+#define CAL_R50		(BBP_CAL + 0xC8)
+#define CAL_R51		(BBP_CAL + 0xCC)
+#define CAL_R52		(BBP_CAL + 0xD0)
+#define CAL_R53		(BBP_CAL + 0xD4)
+#define CAL_R54		(BBP_CAL + 0xD8)
+#define CAL_R55		(BBP_CAL + 0xDC)
+#define CAL_R56		(BBP_CAL + 0xE0)
+#define CAL_R57		(BBP_CAL + 0xE4)
+#define CAL_R58		(BBP_CAL + 0xE8)
+#define CAL_R59		(BBP_CAL + 0xEC)
+#define CAL_R60		(BBP_CAL + 0xF0)
+#define CAL_R61		(BBP_CAL + 0xF4)
+#define CAL_R62		(BBP_CAL + 0xF8)
+#define CAL_R63		(BBP_CAL + 0xFC)
+#define CAL_R64		(BBP_CAL + 0x100)
+#define CAL_R65		(BBP_CAL + 0x104)
+#define CAL_R66		(BBP_CAL + 0x108)
+#define CAL_R67		(BBP_CAL + 0x10C)
+#define CAL_R68		(BBP_CAL + 0x110)
+#define CAL_R69		(BBP_CAL + 0x114)
+#define CAL_R70		(BBP_CAL + 0x118)
+
+/* 0x2e00 ~ */
+#define DSC_R0		(BBP_DSC + 0x00)
+#define DSC_R8		(BBP_DSC + 0x20)
+
+
+/* Register set pair for initialzation register set definition */
+typedef struct _RTMP_REG_PAIR {
+	unsigned int Register;
+	unsigned int Value;
+} RTMP_REG_PAIR, *PRTMP_REG_PAIR;
+
+typedef struct _MT76x0_BBP_Table {
+	unsigned int BwBand; /* (BW_20, BW_40, BW_80) | (G_Band, A_Band_LB, A_Band_MB, A_Band_HB) */
+	RTMP_REG_PAIR RegDate;
+} MT76x0_BBP_Table, *PMT76x0_BBP_Table;
 
 /*
  * RFCSR registers
@@ -2814,13 +3334,13 @@ enum rt2800_eeprom_word {
 /*
  * DMA descriptor defines.
  */
-
 #define TXWI_DESC_SIZE_4WORDS		(4 * sizeof(__le32))
 #define TXWI_DESC_SIZE_5WORDS		(5 * sizeof(__le32))
 
 #define RXWI_DESC_SIZE_4WORDS		(4 * sizeof(__le32))
 #define RXWI_DESC_SIZE_5WORDS		(5 * sizeof(__le32))
 #define RXWI_DESC_SIZE_6WORDS		(6 * sizeof(__le32))
+#define RXWI_DESC_SIZE_7WORDS		(7 * sizeof(__le32))
 
 /*
  * TX WI structure
@@ -2852,11 +3372,14 @@ enum rt2800_eeprom_word {
 #define TXWI_W0_TX_OP			FIELD32(0x00000300)
 #define TXWI_W0_MCS			FIELD32(0x007f0000)
 #define TXWI_W0_BW			FIELD32(0x00800000)
+#define TXWI_W0_BW_MT7630		FIELD32(0x01800000)
 #define TXWI_W0_SHORT_GI		FIELD32(0x01000000)
+#define TXWI_W0_SHORT_GI_MT7630		FIELD32(0x02000000)
 #define TXWI_W0_STBC			FIELD32(0x06000000)
+#define TXWI_W0_STBC_MT7630			FIELD32(0x04000000)
 #define TXWI_W0_IFS			FIELD32(0x08000000)
 #define TXWI_W0_PHYMODE			FIELD32(0xc0000000)
-
+#define TXWI_W0_PHYMODE_MT7630			FIELD32(0xe0000000)
 /*
  * Word1
  * ACK: 0: No Ack needed, 1: Ack needed
@@ -2878,10 +3401,12 @@ enum rt2800_eeprom_word {
 #define TXWI_W1_BW_WIN_SIZE		FIELD32(0x000000fc)
 #define TXWI_W1_WIRELESS_CLI_ID		FIELD32(0x0000ff00)
 #define TXWI_W1_MPDU_TOTAL_BYTE_COUNT	FIELD32(0x0fff0000)
+#define TXWI_W1_MPDU_TOTAL_BYTE_COUNT_MT7630	FIELD32(0x3fff0000)
 #define TXWI_W1_PACKETID		FIELD32(0xf0000000)
 #define TXWI_W1_PACKETID_QUEUE		FIELD32(0x30000000)
 #define TXWI_W1_PACKETID_ENTRY		FIELD32(0xc0000000)
-
+#define TXWI_W1_PACKETID_QUEUE_MT7630		FIELD32(0x03000000)
+#define TXWI_W1_PACKETID_ENTRY_MT7630		FIELD32(0x0c000000)
 /*
  * Word2
  */
@@ -2929,6 +3454,42 @@ enum rt2800_eeprom_word {
  */
 #define RXWI_W3_SNR0			FIELD32(0x000000ff)
 #define RXWI_W3_SNR1			FIELD32(0x0000ff00)
+
+/*
+ * RX WI structure for MT7630
+ */
+
+/*
+ * Word0
+ */
+#define RXWI_W0_7630_WIRELESS_CLI_ID		FIELD32(0x000000ff)
+#define RXWI_W0_7630_KEY_INDEX		FIELD32(0x00000300)
+#define RXWI_W0_7630_BSSID			FIELD32(0x00001c00)
+#define RXWI_W0_7630_UDF			FIELD32(0x0000e000)
+#define RXWI_W0_7630_MPDU_TOTAL_BYTE_COUNT	FIELD32(0x3fff0000)
+#define RXWI_W0_7630_EOF			FIELD32(0x80000000)
+
+/*
+ * Word1
+ */
+#define RXWI_W1_7630_TID			FIELD32(0x0000000f)
+#define RXWI_W1_7630_SEQUENCE	FIELD32(0x0000fff0)
+#define RXWI_W1_7630_MCS			FIELD32(0x007f0000)
+#define RXWI_W1_7630_BW			FIELD32(0x01800000)
+#define RXWI_W1_7630_SHORT_GI		FIELD32(0x02000000)
+#define RXWI_W1_7630_STBC			FIELD32(0x04000000)
+#define RXWI_W1_7630_EXTBC		FIELD32(0x08000000)
+#define RXWI_W1_7630_IXTBC		FIELD32(0x10000000)
+#define RXWI_W1_7630_PHYMODE		FIELD32(0xe0000000)
+
+/*
+ * Word2
+ */
+#define RXWI_W2_7630_RSSI0			FIELD32(0x000000ff)
+#define RXWI_W2_7630_RSSI1			FIELD32(0x0000ff00)
+#define RXWI_W2_7630_RSSI2			FIELD32(0x00ff0000)
+#define RXWI_W2_7630_RSSI3			FIELD32(0xff000000)
+
 
 /*
  * Macros for converting txpower from EEPROM to mac80211 value
@@ -2982,5 +3543,10 @@ struct rt2800_drv_data {
 	unsigned int tbtt_tick;
 	DECLARE_BITMAP(sta_ids, STA_IDS_SIZE);
 };
+
+void AsicRemoveSharedKeyEntry(
+	struct rt2x00_dev *rt2x00dev,
+	unsigned char		 BssIndex,
+	unsigned char	 KeyIdx);
 
 #endif /* RT2800_H */

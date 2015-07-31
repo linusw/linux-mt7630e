@@ -96,7 +96,7 @@ void rt2x00lib_config(struct rt2x00_dev *rt2x00dev,
 /**
  * DOC: Queue handlers
  */
-
+int rt2x00queue_alloc_rxskbs(struct data_queue *queue);
 /**
  * rt2x00queue_alloc_rxskb - allocate a skb for RX purposes.
  * @entry: The entry for which the skb will be applicable.
@@ -464,5 +464,5 @@ static inline void rt2x00leds_resume(struct rt2x00_dev *rt2x00dev)
 {
 }
 #endif /* CONFIG_RT2X00_LIB_LEDS */
-
+void hex_dump(char *str, unsigned char *pSrcBufVA, u32 SrcBufLen);
 #endif /* RT2X00LIB_H */

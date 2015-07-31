@@ -41,6 +41,885 @@
 #include "rt2800lib.h"
 #include "rt2800.h"
 
+
+
+
+
+unsigned char beacon_txwi[]={0x08, 0x00, 0x00, 0x00, 0x1e, 0x00, 0x62, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+
+unsigned char beacon_buf[]={0x80, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 
+	0xff, 0xff, 0xff, 0x00, 0x0c, 0x43, 0x26, 0x60, 0xe9, 0x00, 0x0c, 
+	0x43, 0x26, 0x60, 0xe9, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+	0x00, 0x00, 0x00, 0x64, 0x00, 0x01, 0x04, 0x00, 0x0d, 0x57, 0x6f, 
+	0x6f, 0x64, 0x79, 0x5f, 0x37, 0x36, 0x33, 0x30, 0x5f, 0x50, 0x43, 
+	0x01, 0x08, 0x82, 0x84, 0x8b, 0x96, 0x12, 0x24, 0x48, 0x6c, 0x03, 
+	0x01, 0x01, 0x32, 0x04, 0x0c, 0x18, 0x30, 0x60, 0x07, 0x06, 0x54, 
+	0x57, 0x20, 0x01, 0x0e, 0x14, 0x33, 0x08, 0x20, 0x01, 0x02, 0x03, 
+	0x04, 0x05, 0x06, 0x07, 0x33, 0x08, 0x21, 0x05, 0x06, 0x07, 0x08, 
+	0x09
+};
+
+struct lib_queue_entry_priv_pci {
+	__le32 *desc;
+	dma_addr_t desc_dma;
+};
+
+void lib_hex_dump(char *str, unsigned char *pSrcBufVA, u32 SrcBufLen)
+{
+	unsigned char *pt;
+	int x;
+	pt = pSrcBufVA;
+	printk("%s: %p, len = %d\n", str, pSrcBufVA, SrcBufLen);
+	for (x = 0; x < SrcBufLen; x++) {
+		if (x % 16 == 0)
+			printk("0x%04x : ", x);
+		printk("%02x ", ((unsigned char)pt[x]));
+		if (x % 16 == 15)
+			printk("\n");
+	}
+	printk("\n");
+}
+extern WLAN_FUN_CTRL_STRUC g_WlanFunCtrl;
+
+/* BBP Init Table*/
+static RTMP_REG_PAIR MT76x0_BBP_Init_Tab[] = {
+	{CORE_R1, 0x00000002},
+	{CORE_R4, 0x00000000},
+	{CORE_R24, 0x00000000},
+	{CORE_R32, 0x4003000a},
+	{CORE_R42, 0x00000000},
+	{CORE_R44, 0x00000000},
+
+#if 0
+	(0x212C)disable Tx fifo empty check to avoid hang issue - MT7650E3_BBP_CR_20121225.xls
+#endif
+	{IBI_R11, 0x00000080},
+	
+	/*
+		0x2300[5] Default Antenna:
+		0 for WIFI main antenna
+		1  for WIFI aux  antenna
+
+	*/
+	{AGC1_R0, 0x00021400},
+	
+	{AGC1_R1, 0x00000003},
+	{AGC1_R2, 0x003A6464},
+
+	{AGC1_R15, 0x88A28CB8},
+	{AGC1_R22, 0x00001E21},
+	{AGC1_R23, 0x0000272C},
+	{AGC1_R24, 0x00002F3A},
+	{AGC1_R25, 0x8000005A},
+
+	{AGC1_R33, 0x00003218},
+	{AGC1_R34, 0x000A0C0C},
+	{AGC1_R37, 0x2121262C},
+	{AGC1_R41, 0x38383E45},
+	{AGC1_R57, 0x00001010},
+
+	{AGC1_R59, 0xBAA20E96},
+	{AGC1_R63, 0x00000001},
+
+	{TXC_R0, 0x00280403},
+	{TXC_R1, 0x00000000},
+	{TXC_R2, 0x00005555},
+
+	{RXC_R1, 0x00000012},
+	{RXC_R2, 0x00000011},
+	{RXC_R3, 0x00000005},
+	{RXC_R4, 0x00000000},
+	{RXC_R5, 0xF977C4EC},
+	{RXC_R7, 0x00000090},
+
+	{TXO_R8, 0x00000000},
+
+	{TXBE_R0, 0x00000000},
+	{TXBE_R4, 0x00000004},
+	{TXBE_R6, 0x00000000},
+	{TXBE_R8, 0x00000014},
+	{TXBE_R9, 0x20000000},
+	{TXBE_R10, 0x00000000},
+	{TXBE_R12, 0x00000000},
+	{TXBE_R13, 0x00000000},
+	{TXBE_R14, 0x00000000},
+	{TXBE_R15, 0x00000000},
+	{TXBE_R16, 0x00000000},
+	{TXBE_R17, 0x00000000},
+
+	{RXFE_R0, 0x895000E0}, // TODO: This value is for 5G. 2G has different setting.
+	//{RXFE_R0, 0x005000E0},
+	{RXFE_R1, 0x00008800}, /* Add for E3 */
+	{RXFE_R3, 0x00000000},
+	{RXFE_R4, 0x00000000},
+
+	{RXO_R13, 0x00000092},
+	{RXO_R14, 0x00060612},
+	{RXO_R15, 0xC8321B18},
+	{RXO_R16, 0x0000001E},
+	{RXO_R17, 0x00000000},
+	{RXO_R18, 0xCC00A993},
+	{RXO_R19, 0xB9CB9CB9},
+	{RXO_R21, 0x00000001},
+	{RXO_R24, 0x00000006},
+	{RXO_R28, 0x0000003F},
+};
+static unsigned char MT76x0_BBP_Init_Tab_Size = (sizeof(MT76x0_BBP_Init_Tab) / sizeof(RTMP_REG_PAIR));
+
+MT76x0_BBP_Table MT76x0_BPP_SWITCH_Tab[] = {
+	
+	{RF_G_BAND | RF_BW_20 | RF_BW_40,	{AGC1_R4, 0x1FEDA049}},
+	{RF_A_BAND | RF_BW_20 | RF_BW_40 | RF_BW_80,	{AGC1_R4, 0x1FECA054}},
+
+	{RF_G_BAND | RF_BW_20 | RF_BW_40,	{AGC1_R6, 0x00000045}},
+	{RF_A_BAND | RF_BW_20 | RF_BW_40 | RF_BW_80,	{AGC1_R6, 0x0000000A}},
+	
+	{RF_G_BAND | RF_BW_20,	{AGC1_R8, 0x16343EF0}},
+	{RF_G_BAND | RF_BW_40,	{AGC1_R8, 0x16343EF0}},
+	{RF_A_BAND | RF_BW_20,	{AGC1_R8, 0x122C54F2}},
+	{RF_A_BAND | RF_BW_40,	{AGC1_R8, 0x122C54F2}},
+	{RF_A_BAND | RF_BW_80,	{AGC1_R8, 0x122C54F2}},
+
+	{RF_G_BAND | RF_BW_20,	{AGC1_R12, 0x05052879}},
+	{RF_G_BAND | RF_BW_40,	{AGC1_R12, 0x050528F9}},
+	{RF_A_BAND | RF_BW_20 | RF_BW_40 | RF_BW_80,	{AGC1_R12, 0x050528F9}},
+
+	{RF_G_BAND | RF_BW_20,	{AGC1_R13, 0x35050004}},
+	{RF_G_BAND | RF_BW_40,	{AGC1_R13, 0x35050004}},
+	{RF_A_BAND | RF_BW_20 | RF_BW_40 | RF_BW_80,	{AGC1_R13, 0x2C3A0406}},
+	
+	{RF_G_BAND | RF_BW_20 | RF_BW_40,	{AGC1_R14, 0x310F2E3C}},
+	{RF_A_BAND | RF_BW_20,	{AGC1_R14, 0x310F2A3F}},
+	{RF_A_BAND | RF_BW_40 | RF_BW_80,	{AGC1_R14, 0x310F2A3F}},
+
+	{RF_G_BAND | RF_BW_20 | RF_BW_40,	{AGC1_R26, 0x007C2005}},
+	{RF_A_BAND | RF_BW_20 | RF_BW_40 | RF_BW_80,	{AGC1_R26, 0x007C2005}},
+
+	{RF_G_BAND | RF_BW_20 | RF_BW_40,	{AGC1_R27, 0x000000E1}},
+	{RF_A_BAND | RF_BW_20 | RF_BW_40 | RF_BW_80,	{AGC1_R27, 0x000000EC}},
+
+	{RF_G_BAND | RF_BW_20,	{AGC1_R28, 0x00060806}},
+	{RF_G_BAND | RF_BW_40,	{AGC1_R28, 0x00050806}},
+	{RF_A_BAND | RF_BW_40,	{AGC1_R28, 0x00060801}},
+	{RF_A_BAND | RF_BW_20 | RF_BW_80,	{AGC1_R28, 0x00060806}},
+
+	{RF_G_BAND | RF_BW_20 | RF_BW_40,	{AGC1_R31, 0x00000F23}},
+	{RF_A_BAND | RF_BW_20 | RF_BW_40 | RF_BW_80,	{AGC1_R31, 0x00000F13}},
+
+	{RF_G_BAND | RF_BW_20 | RF_BW_40,	{AGC1_R32, 0x00003218}},
+	{RF_A_BAND | RF_BW_20 | RF_BW_40 | RF_BW_80,	{AGC1_R32, 0x0000181C}},
+
+	{RF_G_BAND | RF_BW_20,	{AGC1_R35, 0x11111616}},
+	{RF_G_BAND | RF_BW_40,	{AGC1_R35, 0x11111516}},
+	{RF_A_BAND | RF_BW_20 | RF_BW_40 | RF_BW_80,	{AGC1_R35, 0x11111116}},
+
+	{RF_G_BAND | RF_BW_20,	{AGC1_R39, 0x2A2A3036}},
+	{RF_G_BAND | RF_BW_40,	{AGC1_R39, 0x2A2A2C36}},
+	{RF_A_BAND | RF_BW_20,	{AGC1_R39, 0x2A2A3036}},
+	{RF_A_BAND | RF_BW_40 ,	{AGC1_R39, 0x2A2A3036}},
+	{RF_A_BAND | RF_BW_80,	{AGC1_R39, 0x2A2A2A36}},
+	
+	{RF_G_BAND | RF_BW_20,	{AGC1_R43, 0x27273438}},
+	{RF_G_BAND | RF_BW_40,	{AGC1_R43, 0x27272D38}},
+	{RF_A_BAND | RF_BW_20 | RF_BW_40 | RF_BW_80,	{AGC1_R43, 0x27272B30}},
+
+	{RF_G_BAND | RF_BW_20 | RF_BW_40,	{AGC1_R51, 0x17171C1C}},
+	{RF_A_BAND | RF_BW_20 | RF_BW_40 | RF_BW_80,	{AGC1_R51, 0xFFFFFFFF}},
+
+	{RF_G_BAND | RF_BW_20,	{AGC1_R53, 0x26262A2F}},
+	{RF_G_BAND | RF_BW_40,	{AGC1_R53, 0x2626322F}},
+	{RF_A_BAND | RF_BW_20 | RF_BW_40 | RF_BW_80,	{AGC1_R53, 0xFFFFFFFF}},
+
+	{RF_G_BAND | RF_BW_20,	{AGC1_R55, 0x40404E58}},
+	{RF_G_BAND | RF_BW_40,	{AGC1_R55, 0x40405858}},
+	{RF_A_BAND | RF_BW_20 | RF_BW_40 | RF_BW_80,	{AGC1_R55, 0xFFFFFFFF}},
+	
+	{RF_G_BAND | RF_BW_20 | RF_BW_40,	{AGC1_R58, 0x00001010}},
+	{RF_A_BAND | RF_BW_20 | RF_BW_40 | RF_BW_80,	{AGC1_R58, 0x00000000}},
+};
+unsigned char MT76x0_BPP_SWITCH_Tab_Size = (sizeof(MT76x0_BPP_SWITCH_Tab) / sizeof(MT76x0_BBP_Table));
+
+static RTMP_REG_PAIR MT76x0_DCOC_Tab[] = {
+	{CAL_R47, 0x000010F0},
+	{CAL_R48, 0x00008080},
+	{CAL_R49, 0x00000F07},
+	{CAL_R50, 0x00000040},
+	{CAL_R51, 0x00000404},
+	{CAL_R52, 0x00080803},
+	{CAL_R53, 0x00000704},
+	{CAL_R54, 0x00002828},
+	//{CAL_R54, 0x00008080},
+	{CAL_R55, 0x00005050},
+};
+static unsigned char MT76x0_DCOC_Tab_Size = (sizeof(MT76x0_DCOC_Tab) / sizeof(RTMP_REG_PAIR));
+
+typedef struct _BANK_RF_REG_PAIR {
+	unsigned char Bank;
+	unsigned char Register;
+	unsigned char Value;
+} BANK_RF_REG_PAIR, *PBANK_RF_REG_PAIR;
+
+typedef struct _RT6590_RF_SWITCH_ITEM {
+	unsigned char Bank;
+	unsigned char Register;
+	unsigned int BwBand; /* (BW_20, BW_40, BW_80) | (G_Band, A_Band_LB, A_Band_MB, A_Band_HB) */
+	unsigned char Value;
+} MT76x0_RF_SWITCH_ITEM, *PMT76x0_RF_SWITCH_ITEM;
+
+
+typedef struct _MT76x0_FREQ_ITEM {
+	unsigned char Channel;
+	unsigned int Band;
+	unsigned char pllR37;
+	unsigned char pllR36;
+	unsigned char pllR35;
+	unsigned char pllR34;
+	unsigned char pllR33;
+	unsigned char pllR32_b7b5;
+	unsigned char pllR32_b4b0; /* PLL_DEN */
+	unsigned char pllR31_b7b5;
+	unsigned char pllR31_b4b0; /* PLL_K */
+	unsigned char pllR30_b7; /* sdm_reset_n */
+	unsigned char pllR30_b6b2; /* sdmmash_prbs,sin */
+	unsigned char pllR30_b1; /* sdm_bp */
+	unsigned short pll_n; /* R30<0>, R29<7:0> (hex) */	
+	unsigned char pllR28_b7b6; /* isi,iso */
+	unsigned char pllR28_b5b4; /* pfd_dly */
+	unsigned char pllR28_b3b2; /* clksel option */
+	unsigned int Pll_sdm_k; /* R28<1:0>, R27<7:0>, R26<7:0> (hex) SDM_k */
+	unsigned char pllR24_b1b0; /* xo_div */
+} MT76x0_FREQ_ITEM;
+
+
+/* Bank	Register Value(Hex) */
+static BANK_RF_REG_PAIR MT76x0_RF_Central_RegTb[] = {
+/*
+	Bank 0 - For central blocks: BG, PLL, XTAL, LO, ADC/DAC
+*/
+	{RF_BANK0,	RF_R01, 0x01},
+	{RF_BANK0,	RF_R02, 0x11},
+
+	/*
+		R3 ~ R7: VCO Cal.
+	*/	
+	{RF_BANK0,	RF_R03, 0x70}, /* VCO Freq Cal - No Bypass, VCO Amp Cal - No Bypass */
+	{RF_BANK0,	RF_R04, 0x30}, /* R4 b<7>=1, VCO cal */
+	{RF_BANK0,	RF_R05, 0x00},
+	{RF_BANK0,	RF_R06, 0x41}, /* Set the open loop amplitude to middle since bypassing amplitude calibration */
+	{RF_BANK0,	RF_R07, 0x00},
+
+	/*
+		XO
+	*/
+	{RF_BANK0,	RF_R08, 0x00}, 
+	{RF_BANK0,	RF_R09, 0x00},
+	{RF_BANK0,	RF_R10, 0x0C},
+	{RF_BANK0,	RF_R11, 0x00},
+	{RF_BANK0,	RF_R12, 0x00},
+
+	/*
+		BG
+	*/
+	{RF_BANK0,	RF_R13, 0x00},
+	{RF_BANK0,	RF_R14, 0x00},
+	{RF_BANK0,	RF_R15, 0x00},
+
+	/*
+		LDO
+	*/
+	{RF_BANK0,	RF_R19, 0x20}, 
+	/*
+		XO
+	*/
+	{RF_BANK0,	RF_R20, 0x22},
+	{RF_BANK0,	RF_R21, 0x12},
+#if 0
+	{RF_BANK0,	RF_R22, 0x26/*0x3F*/}, /* XTAL Freq offset, varies */
+#endif
+	{RF_BANK0,	RF_R23, 0x00},
+	{RF_BANK0,	RF_R24, 0x33}, /* See band selection for R24<1:0> */
+	{RF_BANK0,	RF_R25, 0x00},
+
+	/*
+		PLL, See Freq Selection
+	*/
+	{RF_BANK0,	RF_R26, 0x00},
+	{RF_BANK0,	RF_R27, 0x00},
+	{RF_BANK0,	RF_R28, 0x00},
+	{RF_BANK0,	RF_R29, 0x00},
+	{RF_BANK0,	RF_R30, 0x00},
+	{RF_BANK0,	RF_R31, 0x00},
+	{RF_BANK0,	RF_R32, 0x00},
+	{RF_BANK0,	RF_R33, 0x00},
+	{RF_BANK0,	RF_R34, 0x00},
+	{RF_BANK0,	RF_R35, 0x00},
+	{RF_BANK0,	RF_R36, 0x00},
+	{RF_BANK0,	RF_R37, 0x00},
+
+	/*
+		LO Buffer
+	*/
+	{RF_BANK0,	RF_R38, 0x2F},
+	
+	/*
+		Test Ports
+	*/
+	{RF_BANK0,	RF_R64, 0x00},
+	{RF_BANK0,	RF_R65, 0x80},
+	{RF_BANK0,	RF_R66, 0x01},
+	{RF_BANK0,	RF_R67, 0x04},
+
+	/*
+		ADC/DAC
+	*/
+	{RF_BANK0,	RF_R68, 0x00},
+	{RF_BANK0,	RF_R69, 0x08},
+	{RF_BANK0,	RF_R70, 0x08},
+	{RF_BANK0,	RF_R71, 0x40},
+	{RF_BANK0,	RF_R72, 0xD0},
+	{RF_BANK0,	RF_R73, 0x93},
+};
+static unsigned int MT76x0_RF_Central_RegTb_Size = (sizeof(MT76x0_RF_Central_RegTb) / sizeof(BANK_RF_REG_PAIR));
+
+static BANK_RF_REG_PAIR MT76x0_RF_2G_Channel_0_RegTb[] = {
+/*
+	Bank 5 - Channel 0 2G RF registers	
+*/
+	/*
+		RX logic operation
+	*/
+	/* RF_R00 Change in SelectBand6590 */
+
+	{RF_BANK5,	RF_R02, 0x1D}, /* 0x1D: 5G+2G+BT(MT7650E),  0x0C: 5G+2G(MT7610U) */
+	{RF_BANK5,	RF_R03, 0x00},
+
+	/*
+		TX logic operation
+	*/
+	{RF_BANK5,	RF_R04, 0x00},
+	{RF_BANK5,	RF_R05, 0x84},
+	{RF_BANK5,	RF_R06, 0x02},
+
+	/*
+		LDO
+	*/
+	{RF_BANK5,	RF_R07, 0x00},
+	{RF_BANK5,	RF_R08, 0x00},
+	{RF_BANK5,	RF_R09, 0x00},
+
+	/*
+		RX
+	*/
+	{RF_BANK5,	RF_R10, 0x51},
+	{RF_BANK5,	RF_R11, 0x22},
+	{RF_BANK5,	RF_R12, 0x22},
+	{RF_BANK5,	RF_R13, 0x0F},
+	{RF_BANK5,	RF_R14, 0x47}, /* Increase mixer current for more gain */
+	{RF_BANK5,	RF_R15, 0x25},
+	{RF_BANK5,	RF_R16, 0xC7}, /* Tune LNA2 tank */
+	{RF_BANK5,	RF_R17, 0x00},
+	{RF_BANK5,	RF_R18, 0x00},
+	{RF_BANK5,	RF_R19, 0x30}, /* Improve max Pin */
+	{RF_BANK5,	RF_R20, 0x33},
+	{RF_BANK5,	RF_R21, 0x02},
+	{RF_BANK5,	RF_R22, 0x32}, /* Tune LNA1 tank */
+	{RF_BANK5,	RF_R23, 0x00},
+	{RF_BANK5,	RF_R24, 0x25},
+#if 0 /* R25 is used for BT. Let BT driver write it. */
+	{RF_BANK5,	RF_R25, 0x13},
+#endif
+	{RF_BANK5,	RF_R26, 0x00},
+	{RF_BANK5,	RF_R27, 0x12},
+	{RF_BANK5,	RF_R28, 0x0F},
+	{RF_BANK5,	RF_R29, 0x00},
+
+	/*
+		LOGEN
+	*/
+	{RF_BANK5,	RF_R30, 0x51}, /* Tune LOGEN tank */
+	{RF_BANK5,	RF_R31, 0x35},
+	{RF_BANK5,	RF_R32, 0x31},
+	{RF_BANK5,	RF_R33, 0x31},
+	{RF_BANK5,	RF_R34, 0x34},
+	{RF_BANK5,	RF_R35, 0x03},
+	{RF_BANK5,	RF_R36, 0x00},
+
+	/*
+		TX
+	*/
+	{RF_BANK5,	RF_R37, 0xDD}, /* Improve 3.2GHz spur */
+	{RF_BANK5,	RF_R38, 0xB3},
+	{RF_BANK5,	RF_R39, 0x33},
+	{RF_BANK5,	RF_R40, 0xB1},
+	{RF_BANK5,	RF_R41, 0x71},
+	{RF_BANK5,	RF_R42, 0xF2},
+	{RF_BANK5,	RF_R43, 0x47},
+	{RF_BANK5,	RF_R44, 0x77},
+	{RF_BANK5,	RF_R45, 0x0E},
+	{RF_BANK5,	RF_R46, 0x10},
+	{RF_BANK5,	RF_R47, 0x00},
+	{RF_BANK5,	RF_R48, 0x53},
+	{RF_BANK5,	RF_R49, 0x03},
+	{RF_BANK5,	RF_R50, 0xEF},
+	{RF_BANK5,	RF_R51, 0xC7},
+	{RF_BANK5,	RF_R52, 0x62},
+	{RF_BANK5,	RF_R53, 0x62},
+	{RF_BANK5,	RF_R54, 0x00},
+	{RF_BANK5,	RF_R55, 0x00},
+	{RF_BANK5,	RF_R56, 0x0F},
+	{RF_BANK5,	RF_R57, 0x0F},
+	{RF_BANK5,	RF_R58, 0x16},
+	{RF_BANK5,	RF_R59, 0x16},
+	{RF_BANK5,	RF_R60, 0x10},
+	{RF_BANK5,	RF_R61, 0x10},
+	{RF_BANK5,	RF_R62, 0xD0},
+	{RF_BANK5,	RF_R63, 0x6C},
+	{RF_BANK5,	RF_R64, 0x58},
+	{RF_BANK5, 	RF_R65, 0x58},
+	{RF_BANK5,	RF_R66, 0xF2},
+	{RF_BANK5,	RF_R67, 0xE8},
+	{RF_BANK5,	RF_R68, 0xF0},
+	{RF_BANK5,	RF_R69, 0xF0},
+	{RF_BANK5,	RF_R127, 0x04},
+};
+static unsigned int MT76x0_RF_2G_Channel_0_RegTb_Size = (sizeof(MT76x0_RF_2G_Channel_0_RegTb) / sizeof(BANK_RF_REG_PAIR));
+
+static BANK_RF_REG_PAIR MT76x0_RF_5G_Channel_0_RegTb[] = {
+/*
+	Bank 6 - Channel 0 5G RF registers	
+*/
+	/*
+		RX logic operation
+	*/
+	/* RF_R00 Change in SelectBandMT76x0 */
+
+	{RF_BANK6,	RF_R02, 0x0C},
+	{RF_BANK6,	RF_R03, 0x00},
+
+	/*
+		TX logic operation
+	*/
+	{RF_BANK6,	RF_R04, 0x00},
+	{RF_BANK6,	RF_R05, 0x84},
+	{RF_BANK6,	RF_R06, 0x02},
+
+	/*
+		LDO
+	*/
+	{RF_BANK6,	RF_R07, 0x00},
+	{RF_BANK6,	RF_R08, 0x00},
+	{RF_BANK6,	RF_R09, 0x00},
+
+	/*
+		RX
+	*/
+	{RF_BANK6,	RF_R10, 0x00},
+	{RF_BANK6,	RF_R11, 0x01},
+	
+	{RF_BANK6,	RF_R13, 0x23},
+	{RF_BANK6,	RF_R14, 0x00},
+	{RF_BANK6,	RF_R15, 0x04},
+	{RF_BANK6,	RF_R16, 0x22},
+
+	{RF_BANK6,	RF_R18, 0x08},
+	{RF_BANK6,	RF_R19, 0x00},
+	{RF_BANK6,	RF_R20, 0x00},
+	{RF_BANK6,	RF_R21, 0x00},
+	{RF_BANK6,	RF_R22, 0xFB},
+
+	/*
+		LOGEN5G
+	*/
+	{RF_BANK6,	RF_R25, 0x76},
+	{RF_BANK6,	RF_R26, 0x24},
+	{RF_BANK6,	RF_R27, 0x04},
+	{RF_BANK6,	RF_R28, 0x00},
+	{RF_BANK6,	RF_R29, 0x00},
+
+	/*
+		TX
+	*/
+	{RF_BANK6,	RF_R37, 0xBB},
+	{RF_BANK6,	RF_R38, 0xB3},
+
+	{RF_BANK6,	RF_R40, 0x33},
+	{RF_BANK6,	RF_R41, 0x33},
+	
+	{RF_BANK6,	RF_R43, 0x03},
+	{RF_BANK6,	RF_R44, 0xB3},
+	
+	{RF_BANK6,	RF_R46, 0x17},
+	{RF_BANK6,	RF_R47, 0x0E},
+	{RF_BANK6,	RF_R48, 0x10},
+	{RF_BANK6,	RF_R49, 0x07},
+	
+	{RF_BANK6,	RF_R62, 0x00},
+	{RF_BANK6,	RF_R63, 0x00},
+	{RF_BANK6,	RF_R64, 0xF1},
+	{RF_BANK6,	RF_R65, 0x0F},
+};
+static unsigned int MT76x0_RF_5G_Channel_0_RegTb_Size = (sizeof(MT76x0_RF_5G_Channel_0_RegTb) / sizeof(BANK_RF_REG_PAIR));
+
+static BANK_RF_REG_PAIR MT76x0_RF_VGA_Channel_0_RegTb[] = {
+/*
+	Bank 7 - Channel 0 VGA RF registers	
+*/
+#if 0
+	/* E2 0924 */
+	{RF_BANK7,	RF_R00, 0x7F}, /* Allow BBP/MAC to do calibration */
+#else
+	/* E3 CR */
+	{RF_BANK7,	RF_R00, 0x47}, /* Allow BBP/MAC to do calibration */
+#endif
+	{RF_BANK7,	RF_R01, 0x00},
+	{RF_BANK7,	RF_R02, 0x00},
+	{RF_BANK7,	RF_R03, 0x00},
+	{RF_BANK7,	RF_R04, 0x00},
+
+	{RF_BANK7,	RF_R10, 0x13},
+	{RF_BANK7,	RF_R11, 0x0F},
+	{RF_BANK7,	RF_R12, 0x13}, /* For DCOC */
+	{RF_BANK7,	RF_R13, 0x13}, /* For DCOC */
+	{RF_BANK7,	RF_R14, 0x13}, /* For DCOC */
+	{RF_BANK7,	RF_R15, 0x20}, /* For DCOC */
+	{RF_BANK7,	RF_R16, 0x22}, /* For DCOC */
+
+	{RF_BANK7,	RF_R17, 0x7C},
+
+	{RF_BANK7,	RF_R18, 0x00},
+	{RF_BANK7,	RF_R19, 0x00},
+	{RF_BANK7,	RF_R20, 0x00},
+	{RF_BANK7,	RF_R21, 0xF1},
+	{RF_BANK7,	RF_R22, 0x11},
+	{RF_BANK7,	RF_R23, 0xC2},
+	{RF_BANK7,	RF_R24, 0x41},
+	{RF_BANK7,	RF_R25, 0x20},
+	{RF_BANK7,	RF_R26, 0x40},
+	{RF_BANK7,	RF_R27, 0xD7},
+	{RF_BANK7,	RF_R28, 0xA2},
+	{RF_BANK7,	RF_R29, 0x60},
+	{RF_BANK7,	RF_R30, 0x49},
+	{RF_BANK7,	RF_R31, 0x20},
+	{RF_BANK7,	RF_R32, 0x44},
+	{RF_BANK7,	RF_R33, 0xC1},
+	{RF_BANK7,	RF_R34, 0x60},
+	{RF_BANK7,	RF_R35, 0xC0},
+
+	{RF_BANK7,	RF_R61, 0x01},
+
+	{RF_BANK7,	RF_R72, 0x3C},
+	{RF_BANK7,	RF_R73, 0x34},
+	{RF_BANK7,	RF_R74, 0x00},
+};
+static unsigned int MT76x0_RF_VGA_Channel_0_RegTb_Size = (sizeof(MT76x0_RF_VGA_Channel_0_RegTb) / sizeof(BANK_RF_REG_PAIR));
+
+static const MT76x0_RF_SWITCH_ITEM MT76x0_RF_BW_Switch[] =
+{
+	/*   Bank, 		Register,	Bw/Band, 	Value */
+		{RF_BANK0,	RF_R17,		RF_G_BAND | BW_20,	0x00},
+		{RF_BANK0,	RF_R17,		RF_G_BAND | BW_40,	0x00},
+		{RF_BANK0,	RF_R17,		RF_A_BAND | BW_20,	0x00},
+		{RF_BANK0,	RF_R17,		RF_A_BAND | BW_40,	0x00},
+		{RF_BANK0,	RF_R17,		RF_A_BAND | BW_80,	0x00},
+
+		// TODO: need to check B7.R6 & B7.R7 setting for 2.4G again @20121112
+		{RF_BANK7,	RF_R06,		RF_G_BAND | BW_20,	0x40},
+		{RF_BANK7,	RF_R06,		RF_G_BAND | BW_40,	0x1C},
+		{RF_BANK7,	RF_R06,		RF_A_BAND | BW_20,	0x40},
+		{RF_BANK7,	RF_R06,		RF_A_BAND | BW_40,	0x20},
+		{RF_BANK7,	RF_R06,		RF_A_BAND | BW_80,	0x10},
+
+		{RF_BANK7,	RF_R07,		RF_G_BAND | BW_20,	0x40},
+		{RF_BANK7,	RF_R07,		RF_G_BAND | BW_40,	0x20},
+		{RF_BANK7,	RF_R07,		RF_A_BAND | BW_20,	0x40},
+		{RF_BANK7,	RF_R07,		RF_A_BAND | BW_40,	0x20},
+		{RF_BANK7,	RF_R07,		RF_A_BAND | BW_80,	0x10},
+
+		{RF_BANK7,	RF_R08,		RF_G_BAND | BW_20,	0x03},
+		{RF_BANK7,	RF_R08,		RF_G_BAND | BW_40,	0x01},
+		{RF_BANK7,	RF_R08,		RF_A_BAND | BW_20,	0x03},
+		{RF_BANK7,	RF_R08,		RF_A_BAND | BW_40,	0x01},
+		{RF_BANK7,	RF_R08,		RF_A_BAND | BW_80,	0x00},
+
+		// TODO: need to check B7.R58 & B7.R59 setting for 2.4G again @20121112
+		{RF_BANK7,	RF_R58,		RF_G_BAND | BW_20,	0x40},
+		{RF_BANK7,	RF_R58,		RF_G_BAND | BW_40,	0x40},
+		
+		{RF_BANK7,	RF_R58,		RF_A_BAND | BW_20,	0x40},
+		{RF_BANK7,	RF_R58,		RF_A_BAND | BW_40,	0x40},
+		{RF_BANK7,	RF_R58,		RF_A_BAND | BW_80,	0x10},
+
+		{RF_BANK7,	RF_R59,		RF_G_BAND | BW_20,	0x40},
+		{RF_BANK7,	RF_R59,		RF_G_BAND | BW_40,	0x40},
+		
+		{RF_BANK7,	RF_R59,		RF_A_BAND | BW_20,	0x40},
+		{RF_BANK7,	RF_R59,		RF_A_BAND | BW_40,	0x40},
+		{RF_BANK7,	RF_R59,		RF_A_BAND | BW_80,	0x10},
+
+		{RF_BANK7,	RF_R60,		RF_G_BAND | BW_20,	0xAA},
+		{RF_BANK7,	RF_R60,		RF_G_BAND | BW_40,	0xAA},
+		{RF_BANK7,	RF_R60,		RF_A_BAND | BW_20,	0xAA},
+		{RF_BANK7,	RF_R60,		RF_A_BAND | BW_40,	0xAA},
+		{RF_BANK7,	RF_R60,		RF_A_BAND | BW_80,	0xAA},
+
+		{RF_BANK7,	RF_R76,		BW_20,	0x40},
+		{RF_BANK7,	RF_R76,		BW_40,	0x40},
+		{RF_BANK7,	RF_R76,		BW_80,	0x10},
+
+		{RF_BANK7,	RF_R77,		BW_20,	0x40},
+		{RF_BANK7,	RF_R77,		BW_40,	0x40},
+		{RF_BANK7,	RF_R77,		BW_80,	0x10},
+};
+unsigned char MT76x0_RF_BW_Switch_Size = (sizeof(MT76x0_RF_BW_Switch) / sizeof(MT76x0_RF_SWITCH_ITEM));
+
+static const MT76x0_RF_SWITCH_ITEM MT76x0_RF_Band_Switch[] =
+{
+	/*   Bank, 		Register,	Bw/Band, 		Value */
+		{RF_BANK0,	RF_R16,		RF_G_BAND,		0x20},
+		{RF_BANK0,	RF_R16,		RF_A_BAND,		0x20},
+		
+		{RF_BANK0,	RF_R18,		RF_G_BAND,		0x00},
+		{RF_BANK0,	RF_R18,		RF_A_BAND,		0x00},
+
+		{RF_BANK0,	RF_R39,		RF_G_BAND,		0x36},
+		{RF_BANK0,	RF_R39,		RF_A_BAND_LB,	0x34},
+		{RF_BANK0,	RF_R39,		RF_A_BAND_MB,	0x33},
+		{RF_BANK0,	RF_R39,		RF_A_BAND_HB,	0x31},
+		{RF_BANK0,	RF_R39,		RF_A_BAND_11J,	0x36},
+
+		{RF_BANK6,	RF_R12,		RF_A_BAND_LB,	0x44},
+		{RF_BANK6,	RF_R12,		RF_A_BAND_MB,	0x44},
+		{RF_BANK6,	RF_R12,		RF_A_BAND_HB,	0x55},
+		{RF_BANK6,	RF_R12,		RF_A_BAND_11J,	0x44},
+
+		{RF_BANK6,	RF_R17,		RF_A_BAND_LB,	0x02},
+		{RF_BANK6,	RF_R17,		RF_A_BAND_MB,	0x00},
+		{RF_BANK6,	RF_R17,		RF_A_BAND_HB,	0x00},
+		{RF_BANK6,	RF_R17,		RF_A_BAND_11J,	0x01},
+
+		{RF_BANK6,	RF_R24,		RF_A_BAND_LB,	0x71},
+		{RF_BANK6,	RF_R24,		RF_A_BAND_MB,	0x41},
+		{RF_BANK6,	RF_R24,		RF_A_BAND_HB,	0x01},
+		{RF_BANK6,	RF_R24,		RF_A_BAND_11J,	0xC1},
+
+		{RF_BANK6,	RF_R39,		RF_A_BAND_LB,	0x36},
+		{RF_BANK6,	RF_R39,		RF_A_BAND_MB,	0x34},
+		{RF_BANK6,	RF_R39,		RF_A_BAND_HB,	0x32},
+		{RF_BANK6,	RF_R39,		RF_A_BAND_11J,	0x37},
+
+		/* Move R6-R45, R50~R59 to MT76x0_RF_INT_PA_5G_Channel_0_RegTb/MT76x0_RF_EXT_PA_5G_Channel_0_RegTb */
+	
+		{RF_BANK6,	RF_R127,	RF_G_BAND,		0x84},
+		{RF_BANK6,	RF_R127,	RF_A_BAND,		0x04},
+
+		{RF_BANK7,	RF_R05,		RF_G_BAND,		0x40},
+		{RF_BANK7,	RF_R05,		RF_A_BAND,		0x00},
+
+		{RF_BANK7,	RF_R09,		RF_G_BAND,		0x00},
+		{RF_BANK7,	RF_R09,		RF_A_BAND,		0x00},
+		
+		{RF_BANK7,	RF_R70,		RF_G_BAND,		0x00},
+		{RF_BANK7,	RF_R70,		RF_A_BAND,		0x6D},
+
+		{RF_BANK7,	RF_R71,		RF_G_BAND,		0x00},
+		{RF_BANK7,	RF_R71,		RF_A_BAND,		0xB0},
+
+		{RF_BANK7,	RF_R78,		RF_G_BAND,		0x00},
+		{RF_BANK7,	RF_R78,		RF_A_BAND,		0x55},
+
+		{RF_BANK7,	RF_R79,		RF_G_BAND,		0x00},
+		{RF_BANK7,	RF_R79,		RF_A_BAND,		0x55},
+};
+unsigned int MT76x0_RF_Band_Switch_Size = (sizeof(MT76x0_RF_Band_Switch) / sizeof(MT76x0_RF_SWITCH_ITEM));
+
+
+static const MT76x0_FREQ_ITEM MT76x0_Frequency_Plan[] =
+{
+	{1,		RF_G_BAND,	0x02, 0x3F, 0x28, 0xDD, 0xE2, 0x40, 0x02, 0x40, 0x02, 0, 0, 1, 0x28, 0, 0x30, 0, 0, 0x3}, /* Freq 2412 */
+	{2, 	RF_G_BAND,	0x02, 0x3F, 0x3C, 0xDD, 0xE4, 0x40, 0x07, 0x40, 0x02, 0, 0, 1, 0xA1, 0, 0x30, 0, 0, 0x1}, /* Freq 2417 */
+	{3, 	RF_G_BAND,	0x02, 0x3F, 0x3C, 0xDD, 0xE2, 0x40, 0x07, 0x40, 0x0B, 0, 0, 1, 0x50, 0, 0x30, 0, 0, 0x0}, /* Freq 2422 */
+	{4, 	RF_G_BAND,	0x02, 0x3F, 0x28, 0xDD, 0xD4, 0x40, 0x02, 0x40, 0x09, 0, 0, 1, 0x50, 0, 0x30, 0, 0, 0x0}, /* Freq 2427 */
+	{5, 	RF_G_BAND,	0x02, 0x3F, 0x3C, 0xDD, 0xD4, 0x40, 0x07, 0x40, 0x02, 0, 0, 1, 0xA2, 0, 0x30, 0, 0, 0x1}, /* Freq 2432 */
+	{6, 	RF_G_BAND,	0x02, 0x3F, 0x3C, 0xDD, 0xD4, 0x40, 0x07, 0x40, 0x07, 0, 0, 1, 0xA2, 0, 0x30, 0, 0, 0x1}, /* Freq 2437 */
+	{7, 	RF_G_BAND,	0x02, 0x3F, 0x28, 0xDD, 0xE2, 0x40, 0x02, 0x40, 0x07, 0, 0, 1, 0x28, 0, 0x30, 0, 0, 0x3}, /* Freq 2442 */
+	{8, 	RF_G_BAND,	0x02, 0x3F, 0x3C, 0xDD, 0xD4, 0x40, 0x07, 0x40, 0x02, 0, 0, 1, 0xA3, 0, 0x30, 0, 0, 0x1}, /* Freq 2447 */
+	{9, 	RF_G_BAND,	0x02, 0x3F, 0x3C, 0xDD, 0xF2, 0x40, 0x07, 0x40, 0x0D, 0, 0, 1, 0x28, 0, 0x30, 0, 0, 0x3}, /* Freq 2452 */
+	{10, 	RF_G_BAND,	0x02, 0x3F, 0x28, 0xDD, 0xD4, 0x40, 0x02, 0x40, 0x09, 0, 0, 1, 0x51, 0, 0x30, 0, 0, 0x0}, /* Freq 2457 */
+	{11, 	RF_G_BAND,	0x02, 0x3F, 0x3C, 0xDD, 0xD4, 0x40, 0x07, 0x40, 0x02, 0, 0, 1, 0xA4, 0, 0x30, 0, 0, 0x1}, /* Freq 2462 */
+	{12, 	RF_G_BAND,	0x02, 0x3F, 0x3C, 0xDD, 0xD4, 0x40, 0x07, 0x40, 0x07, 0, 0, 1, 0xA4, 0, 0x30, 0, 0, 0x1}, /* Freq 2467 */
+	{13, 	RF_G_BAND,	0x02, 0x3F, 0x28, 0xDD, 0xF2, 0x40, 0x02, 0x40, 0x02, 0, 0, 1, 0x29, 0, 0x30, 0, 0, 0x3}, /* Freq 2472 */
+	{14, 	RF_G_BAND,	0x02, 0x3F, 0x28, 0xDD, 0xF2, 0x40, 0x02, 0x40, 0x04, 0, 0, 1, 0x29, 0, 0x30, 0, 0, 0x3}, /* Freq 2484 */
+
+	{183, 	(RF_A_BAND | RF_A_BAND_11J), 0x02, 0x3F, 0x70, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x17, 0, 0, 1, 0x28, 0, 0x30, 0, 0, 0x3}, /* Freq 4915 */
+	{184, 	(RF_A_BAND | RF_A_BAND_11J), 0x02, 0x3F, 0x68, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x00, 0, 0, 1, 0x29, 0, 0x30, 0, 0, 0x3}, /* Freq 4920 */
+	{185, 	(RF_A_BAND | RF_A_BAND_11J), 0x02, 0x3F, 0x68, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x01, 0, 0, 1, 0x29, 0, 0x30, 0, 0, 0x3}, /* Freq 4925 */
+	{187, 	(RF_A_BAND | RF_A_BAND_11J), 0x02, 0x3F, 0x68, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x03, 0, 0, 1, 0x29, 0, 0x30, 0, 0, 0x3}, /* Freq 4935 */
+	{188, 	(RF_A_BAND | RF_A_BAND_11J), 0x02, 0x3F, 0x30, 0x97, 0xD2, 0x40, 0x04, 0x40, 0x02, 0, 0, 1, 0x29, 0, 0x30, 0, 0, 0x3}, /* Freq 4940 */
+	{189, 	(RF_A_BAND | RF_A_BAND_11J), 0x02, 0x3F, 0x68, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x05, 0, 0, 1, 0x29, 0, 0x30, 0, 0, 0x3}, /* Freq 4945 */
+	{192, 	(RF_A_BAND | RF_A_BAND_11J), 0x02, 0x3F, 0x30, 0x97, 0xD2, 0x40, 0x04, 0x40, 0x04, 0, 0, 1, 0x29, 0, 0x30, 0, 0, 0x3}, /* Freq 4960 */
+	{196, 	(RF_A_BAND | RF_A_BAND_11J), 0x02, 0x3F, 0x30, 0x97, 0xD2, 0x40, 0x04, 0x40, 0x06, 0, 0, 1, 0x29, 0, 0x30, 0, 0, 0x3}, /* Freq 4980 */
+	
+	{36, 	(RF_A_BAND | RF_A_BAND_LB),	 0x02, 0x3F, 0x30, 0x97, 0xD2, 0x40, 0x04, 0x40, 0x02, 0, 0, 1, 0x2B, 0, 0x30, 0, 0, 0x3}, /* Freq 5180 */
+	{37, 	(RF_A_BAND | RF_A_BAND_LB),	 0x02, 0x3F, 0x68, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x05, 0, 0, 1, 0x2B, 0, 0x30, 0, 0, 0x3}, /* Freq 5185 */
+	{38, 	(RF_A_BAND | RF_A_BAND_LB),	 0x02, 0x3F, 0x30, 0x97, 0xD2, 0x40, 0x04, 0x40, 0x03, 0, 0, 1, 0x2B, 0, 0x30, 0, 0, 0x3}, /* Freq 5190 */
+	{39, 	(RF_A_BAND | RF_A_BAND_LB),	 0x02, 0x3F, 0x68, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x07, 0, 0, 1, 0x2B, 0, 0x30, 0, 0, 0x3}, /* Freq 5195 */
+	{40, 	(RF_A_BAND | RF_A_BAND_LB),	 0x02, 0x3F, 0x30, 0x97, 0xD2, 0x40, 0x04, 0x40, 0x04, 0, 0, 1, 0x2B, 0, 0x30, 0, 0, 0x3}, /* Freq 5200 */
+	{41, 	(RF_A_BAND | RF_A_BAND_LB),	 0x02, 0x3F, 0x68, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x09, 0, 0, 1, 0x2B, 0, 0x30, 0, 0, 0x3}, /* Freq 5205 */
+	{42, 	(RF_A_BAND | RF_A_BAND_LB),	 0x02, 0x3F, 0x30, 0xDD, 0xD2, 0x40, 0x04, 0x40, 0x05, 0, 0, 1, 0x2B, 0, 0x30, 0, 0, 0x3}, /* Freq 5210 */
+	{43, 	(RF_A_BAND | RF_A_BAND_LB),	 0x02, 0x3F, 0x68, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x0B, 0, 0, 1, 0x2B, 0, 0x30, 0, 0, 0x3}, /* Freq 5215 */
+	{44, 	(RF_A_BAND | RF_A_BAND_LB),	 0x02, 0x3F, 0x30, 0x97, 0xD2, 0x40, 0x04, 0x40, 0x06, 0, 0, 1, 0x2B, 0, 0x30, 0, 0, 0x3}, /* Freq 5220 */
+	{45, 	(RF_A_BAND | RF_A_BAND_LB),	 0x02, 0x3F, 0x68, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x0D, 0, 0, 1, 0x2B, 0, 0x30, 0, 0, 0x3}, /* Freq 5225 */
+	{46, 	(RF_A_BAND | RF_A_BAND_LB),	 0x02, 0x3F, 0x30, 0xDD, 0xD2, 0x40, 0x04, 0x40, 0x07, 0, 0, 1, 0x2B, 0, 0x30, 0, 0, 0x3}, /* Freq 5230 */
+	{47, 	(RF_A_BAND | RF_A_BAND_LB),	 0x02, 0x3F, 0x68, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x0F, 0, 0, 1, 0x2B, 0, 0x30, 0, 0, 0x3}, /* Freq 5235 */
+	{48, 	(RF_A_BAND | RF_A_BAND_LB),	 0x02, 0x3F, 0x30, 0x97, 0xD2, 0x40, 0x04, 0x40, 0x08, 0, 0, 1, 0x2B, 0, 0x30, 0, 0, 0x3}, /* Freq 5240 */
+	{49, 	(RF_A_BAND | RF_A_BAND_LB),	 0x02, 0x3F, 0x68, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x11, 0, 0, 1, 0x2B, 0, 0x30, 0, 0, 0x3}, /* Freq 5245 */
+	{50, 	(RF_A_BAND | RF_A_BAND_LB),	 0x02, 0x3F, 0x30, 0x97, 0xD2, 0x40, 0x04, 0x40, 0x09, 0, 0, 1, 0x2B, 0, 0x30, 0, 0, 0x3}, /* Freq 5250 */
+	{51, 	(RF_A_BAND | RF_A_BAND_LB),	 0x02, 0x3F, 0x68, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x13, 0, 0, 1, 0x2B, 0, 0x30, 0, 0, 0x3}, /* Freq 5255 */
+	{52, 	(RF_A_BAND | RF_A_BAND_LB),	 0x02, 0x3F, 0x30, 0x97, 0xD2, 0x40, 0x04, 0x40, 0x0A, 0, 0, 1, 0x2B, 0, 0x30, 0, 0, 0x3}, /* Freq 5260 */
+	{53, 	(RF_A_BAND | RF_A_BAND_LB),	 0x02, 0x3F, 0x68, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x15, 0, 0, 1, 0x2B, 0, 0x30, 0, 0, 0x3}, /* Freq 5265 */
+	{54, 	(RF_A_BAND | RF_A_BAND_LB),	 0x02, 0x3F, 0x30, 0xDD, 0xD2, 0x40, 0x04, 0x40, 0x0B, 0, 0, 1, 0x2B, 0, 0x30, 0, 0, 0x3}, /* Freq 5270 */
+	{55, 	(RF_A_BAND | RF_A_BAND_LB),	 0x02, 0x3F, 0x70, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x17, 0, 0, 1, 0x2B, 0, 0x30, 0, 0, 0x3}, /* Freq 5275 */
+	{56, 	(RF_A_BAND | RF_A_BAND_LB),	 0x02, 0x3F, 0x30, 0x97, 0xD2, 0x40, 0x04, 0x40, 0x00, 0, 0, 1, 0x2C, 0, 0x30, 0, 0, 0x3}, /* Freq 5280 */
+	{57, 	(RF_A_BAND | RF_A_BAND_LB),	 0x02, 0x3F, 0x68, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x01, 0, 0, 1, 0x2C, 0, 0x30, 0, 0, 0x3}, /* Freq 5285 */
+	{58, 	(RF_A_BAND | RF_A_BAND_LB),	 0x02, 0x3F, 0x30, 0xDD, 0xD2, 0x40, 0x04, 0x40, 0x01, 0, 0, 1, 0x2C, 0, 0x30, 0, 0, 0x3}, /* Freq 5290 */
+	{59, 	(RF_A_BAND | RF_A_BAND_LB),	 0x02, 0x3F, 0x68, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x03, 0, 0, 1, 0x2C, 0, 0x30, 0, 0, 0x3}, /* Freq 5295 */
+	{60, 	(RF_A_BAND | RF_A_BAND_LB),	 0x02, 0x3F, 0x30, 0x97, 0xD2, 0x40, 0x04, 0x40, 0x02, 0, 0, 1, 0x2C, 0, 0x30, 0, 0, 0x3}, /* Freq 5300 */
+	{61, 	(RF_A_BAND | RF_A_BAND_LB),	 0x02, 0x3F, 0x68, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x05, 0, 0, 1, 0x2C, 0, 0x30, 0, 0, 0x3}, /* Freq 5305 */
+	{62, 	(RF_A_BAND | RF_A_BAND_LB),	 0x02, 0x3F, 0x30, 0x97, 0xD2, 0x40, 0x04, 0x40, 0x03, 0, 0, 1, 0x2C, 0, 0x30, 0, 0, 0x3}, /* Freq 5310 */
+	{63, 	(RF_A_BAND | RF_A_BAND_LB),	 0x02, 0x3F, 0x68, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x07, 0, 0, 1, 0x2C, 0, 0x30, 0, 0, 0x3}, /* Freq 5315 */
+	{64, 	(RF_A_BAND | RF_A_BAND_LB),	 0x02, 0x3F, 0x30, 0x97, 0xD2, 0x40, 0x04, 0x40, 0x04, 0, 0, 1, 0x2C, 0, 0x30, 0, 0, 0x3}, /* Freq 5320 */
+
+	{100, 	(RF_A_BAND | RF_A_BAND_MB),	 0x02, 0x3F, 0x30, 0x97, 0xD2, 0x40, 0x04, 0x40, 0x0A, 0, 0, 1, 0x2D, 0, 0x30, 0, 0, 0x3}, /* Freq 5500 */
+	{101, 	(RF_A_BAND | RF_A_BAND_MB),	 0x02, 0x3F, 0x68, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x15, 0, 0, 1, 0x2D, 0, 0x30, 0, 0, 0x3}, /* Freq 5505 */
+	{102, 	(RF_A_BAND | RF_A_BAND_MB),	 0x02, 0x3F, 0x30, 0xDD, 0xD2, 0x40, 0x04, 0x40, 0x0B, 0, 0, 1, 0x2D, 0, 0x30, 0, 0, 0x3}, /* Freq 5510 */
+	{103, 	(RF_A_BAND | RF_A_BAND_MB),	 0x02, 0x3F, 0x70, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x17, 0, 0, 1, 0x2D, 0, 0x30, 0, 0, 0x3}, /* Freq 5515 */
+	{104, 	(RF_A_BAND | RF_A_BAND_MB),	 0x02, 0x3F, 0x30, 0x97, 0xD2, 0x40, 0x04, 0x40, 0x00, 0, 0, 1, 0x2E, 0, 0x30, 0, 0, 0x3}, /* Freq 5520 */
+	{105, 	(RF_A_BAND | RF_A_BAND_MB),	 0x02, 0x3F, 0x68, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x01, 0, 0, 1, 0x2E, 0, 0x30, 0, 0, 0x3}, /* Freq 5525 */
+	{106, 	(RF_A_BAND | RF_A_BAND_MB),	 0x02, 0x3F, 0x30, 0xDD, 0xD2, 0x40, 0x04, 0x40, 0x01, 0, 0, 1, 0x2E, 0, 0x30, 0, 0, 0x3}, /* Freq 5530 */
+	{107, 	(RF_A_BAND | RF_A_BAND_MB),	 0x02, 0x3F, 0x68, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x03, 0, 0, 1, 0x2E, 0, 0x30, 0, 0, 0x3}, /* Freq 5535 */
+	{108, 	(RF_A_BAND | RF_A_BAND_MB),	 0x02, 0x3F, 0x30, 0x97, 0xD2, 0x40, 0x04, 0x40, 0x02, 0, 0, 1, 0x2E, 0, 0x30, 0, 0, 0x3}, /* Freq 5540 */
+	{109, 	(RF_A_BAND | RF_A_BAND_MB),	 0x02, 0x3F, 0x68, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x05, 0, 0, 1, 0x2E, 0, 0x30, 0, 0, 0x3}, /* Freq 5545 */
+	{110, 	(RF_A_BAND | RF_A_BAND_MB),	 0x02, 0x3F, 0x30, 0x97, 0xD2, 0x40, 0x04, 0x40, 0x03, 0, 0, 1, 0x2E, 0, 0x30, 0, 0, 0x3}, /* Freq 5550 */
+	{111, 	(RF_A_BAND | RF_A_BAND_MB),	 0x02, 0x3F, 0x68, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x07, 0, 0, 1, 0x2E, 0, 0x30, 0, 0, 0x3}, /* Freq 5555 */
+	{112, 	(RF_A_BAND | RF_A_BAND_MB),	 0x02, 0x3F, 0x30, 0x97, 0xD2, 0x40, 0x04, 0x40, 0x04, 0, 0, 1, 0x2E, 0, 0x30, 0, 0, 0x3}, /* Freq 5560 */
+	{113, 	(RF_A_BAND | RF_A_BAND_MB),	 0x02, 0x3F, 0x68, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x09, 0, 0, 1, 0x2E, 0, 0x30, 0, 0, 0x3}, /* Freq 5565 */
+	{114, 	(RF_A_BAND | RF_A_BAND_MB),	 0x02, 0x3F, 0x30, 0xDD, 0xD2, 0x40, 0x04, 0x40, 0x05, 0, 0, 1, 0x2E, 0, 0x30, 0, 0, 0x3}, /* Freq 5570 */
+	{115, 	(RF_A_BAND | RF_A_BAND_MB),	 0x02, 0x3F, 0x68, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x0B, 0, 0, 1, 0x2E, 0, 0x30, 0, 0, 0x3}, /* Freq 5575 */
+	{116, 	(RF_A_BAND | RF_A_BAND_MB),	 0x02, 0x3F, 0x30, 0x97, 0xD2, 0x40, 0x04, 0x40, 0x06, 0, 0, 1, 0x2E, 0, 0x30, 0, 0, 0x3}, /* Freq 5580 */
+	{117, 	(RF_A_BAND | RF_A_BAND_MB),	 0x02, 0x3F, 0x68, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x0D, 0, 0, 1, 0x2E, 0, 0x30, 0, 0, 0x3}, /* Freq 5585 */
+	{118, 	(RF_A_BAND | RF_A_BAND_MB),	 0x02, 0x3F, 0x30, 0xDD, 0xD2, 0x40, 0x04, 0x40, 0x07, 0, 0, 1, 0x2E, 0, 0x30, 0, 0, 0x3}, /* Freq 5590 */
+	{119, 	(RF_A_BAND | RF_A_BAND_MB),	 0x02, 0x3F, 0x68, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x0F, 0, 0, 1, 0x2E, 0, 0x30, 0, 0, 0x3}, /* Freq 5595 */
+	{120, 	(RF_A_BAND | RF_A_BAND_MB),	 0x02, 0x3F, 0x30, 0x97, 0xD2, 0x40, 0x04, 0x40, 0x08, 0, 0, 1, 0x2E, 0, 0x30, 0, 0, 0x3}, /* Freq 5600 */
+	{121, 	(RF_A_BAND | RF_A_BAND_MB),	 0x02, 0x3F, 0x68, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x11, 0, 0, 1, 0x2E, 0, 0x30, 0, 0, 0x3}, /* Freq 5605 */
+	{122, 	(RF_A_BAND | RF_A_BAND_MB),	 0x02, 0x3F, 0x30, 0x97, 0xD2, 0x40, 0x04, 0x40, 0x09, 0, 0, 1, 0x2E, 0, 0x30, 0, 0, 0x3}, /* Freq 5610 */
+	{123, 	(RF_A_BAND | RF_A_BAND_MB),	 0x02, 0x3F, 0x68, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x13, 0, 0, 1, 0x2E, 0, 0x30, 0, 0, 0x3}, /* Freq 5615 */
+	{124, 	(RF_A_BAND | RF_A_BAND_MB),	 0x02, 0x3F, 0x30, 0x97, 0xD2, 0x40, 0x04, 0x40, 0x0A, 0, 0, 1, 0x2E, 0, 0x30, 0, 0, 0x3}, /* Freq 5620 */
+	{125, 	(RF_A_BAND | RF_A_BAND_MB),	 0x02, 0x3F, 0x68, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x15, 0, 0, 1, 0x2E, 0, 0x30, 0, 0, 0x3}, /* Freq 5625 */
+	{126, 	(RF_A_BAND | RF_A_BAND_MB),	 0x02, 0x3F, 0x30, 0xDD, 0xD2, 0x40, 0x04, 0x40, 0x0B, 0, 0, 1, 0x2E, 0, 0x30, 0, 0, 0x3}, /* Freq 5630 */
+	{127, 	(RF_A_BAND | RF_A_BAND_MB),	 0x02, 0x3F, 0x70, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x17, 0, 0, 1, 0x2E, 0, 0x30, 0, 0, 0x3}, /* Freq 5635 */
+	{128, 	(RF_A_BAND | RF_A_BAND_MB),	 0x02, 0x3F, 0x30, 0x97, 0xD2, 0x40, 0x04, 0x40, 0x00, 0, 0, 1, 0x2F, 0, 0x30, 0, 0, 0x3}, /* Freq 5640 */
+	{129, 	(RF_A_BAND | RF_A_BAND_MB),	 0x02, 0x3F, 0x68, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x01, 0, 0, 1, 0x2F, 0, 0x30, 0, 0, 0x3}, /* Freq 5645 */
+	{130, 	(RF_A_BAND | RF_A_BAND_MB),	 0x02, 0x3F, 0x30, 0xDD, 0xD2, 0x40, 0x04, 0x40, 0x01, 0, 0, 1, 0x2F, 0, 0x30, 0, 0, 0x3}, /* Freq 5650 */
+	{131, 	(RF_A_BAND | RF_A_BAND_MB),	 0x02, 0x3F, 0x68, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x03, 0, 0, 1, 0x2F, 0, 0x30, 0, 0, 0x3}, /* Freq 5655 */
+	{132, 	(RF_A_BAND | RF_A_BAND_MB),	 0x02, 0x3F, 0x30, 0x97, 0xD2, 0x40, 0x04, 0x40, 0x02, 0, 0, 1, 0x2F, 0, 0x30, 0, 0, 0x3}, /* Freq 5660 */
+	{133, 	(RF_A_BAND | RF_A_BAND_MB),	 0x02, 0x3F, 0x68, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x05, 0, 0, 1, 0x2F, 0, 0x30, 0, 0, 0x3}, /* Freq 5665 */
+	{134, 	(RF_A_BAND | RF_A_BAND_MB),	 0x02, 0x3F, 0x30, 0x97, 0xD2, 0x40, 0x04, 0x40, 0x03, 0, 0, 1, 0x2F, 0, 0x30, 0, 0, 0x3}, /* Freq 5670 */
+	{135, 	(RF_A_BAND | RF_A_BAND_MB),	 0x02, 0x3F, 0x68, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x07, 0, 0, 1, 0x2F, 0, 0x30, 0, 0, 0x3}, /* Freq 5675 */
+	{136, 	(RF_A_BAND | RF_A_BAND_MB),	 0x02, 0x3F, 0x30, 0x97, 0xD2, 0x40, 0x04, 0x40, 0x04, 0, 0, 1, 0x2F, 0, 0x30, 0, 0, 0x3}, /* Freq 5680 */
+
+	{137, 	(RF_A_BAND | RF_A_BAND_HB),	 0x02, 0x3F, 0x68, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x09, 0, 0, 1, 0x2F, 0, 0x30, 0, 0, 0x3}, /* Freq 5685 */
+	{138, 	(RF_A_BAND | RF_A_BAND_HB),	 0x02, 0x3F, 0x30, 0xDD, 0xD2, 0x40, 0x04, 0x40, 0x05, 0, 0, 1, 0x2F, 0, 0x30, 0, 0, 0x3}, /* Freq 5690 */
+	{139, 	(RF_A_BAND | RF_A_BAND_HB),	 0x02, 0x3F, 0x68, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x0B, 0, 0, 1, 0x2F, 0, 0x30, 0, 0, 0x3}, /* Freq 5695 */
+	{140, 	(RF_A_BAND | RF_A_BAND_HB),	 0x02, 0x3F, 0x30, 0x97, 0xD2, 0x40, 0x04, 0x40, 0x06, 0, 0, 1, 0x2F, 0, 0x30, 0, 0, 0x3}, /* Freq 5700 */
+	{141, 	(RF_A_BAND | RF_A_BAND_HB),	 0x02, 0x3F, 0x68, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x0D, 0, 0, 1, 0x2F, 0, 0x30, 0, 0, 0x3}, /* Freq 5705 */
+	{142, 	(RF_A_BAND | RF_A_BAND_HB),	 0x02, 0x3F, 0x30, 0xDD, 0xD2, 0x40, 0x04, 0x40, 0x07, 0, 0, 1, 0x2F, 0, 0x30, 0, 0, 0x3}, /* Freq 5710 */	
+	{143, 	(RF_A_BAND | RF_A_BAND_HB),	 0x02, 0x3F, 0x68, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x0F, 0, 0, 1, 0x2F, 0, 0x30, 0, 0, 0x3}, /* Freq 5715 */
+	{144, 	(RF_A_BAND | RF_A_BAND_HB),	 0x02, 0x3F, 0x30, 0x97, 0xD2, 0x40, 0x04, 0x40, 0x08, 0, 0, 1, 0x2F, 0, 0x30, 0, 0, 0x3}, /* Freq 5720 */
+	{145, 	(RF_A_BAND | RF_A_BAND_HB),	 0x02, 0x3F, 0x68, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x11, 0, 0, 1, 0x2F, 0, 0x30, 0, 0, 0x3}, /* Freq 5725 */
+	{146, 	(RF_A_BAND | RF_A_BAND_HB),	 0x02, 0x3F, 0x30, 0x97, 0xD2, 0x40, 0x04, 0x40, 0x09, 0, 0, 1, 0x2F, 0, 0x30, 0, 0, 0x3}, /* Freq 5730 */
+	{147, 	(RF_A_BAND | RF_A_BAND_HB),	 0x02, 0x3F, 0x68, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x13, 0, 0, 1, 0x2F, 0, 0x30, 0, 0, 0x3}, /* Freq 5735 */
+	{148, 	(RF_A_BAND | RF_A_BAND_HB),	 0x02, 0x3F, 0x30, 0x97, 0xD2, 0x40, 0x04, 0x40, 0x0A, 0, 0, 1, 0x2F, 0, 0x30, 0, 0, 0x3}, /* Freq 5740 */
+	{149, 	(RF_A_BAND | RF_A_BAND_HB),	 0x02, 0x3F, 0x68, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x15, 0, 0, 1, 0x2F, 0, 0x30, 0, 0, 0x3}, /* Freq 5745 */
+	{150, 	(RF_A_BAND | RF_A_BAND_HB),	 0x02, 0x3F, 0x30, 0xDD, 0xD2, 0x40, 0x04, 0x40, 0x0B, 0, 0, 1, 0x2F, 0, 0x30, 0, 0, 0x3}, /* Freq 5750 */	
+	{151, 	(RF_A_BAND | RF_A_BAND_HB),	 0x02, 0x3F, 0x70, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x17, 0, 0, 1, 0x2F, 0, 0x30, 0, 0, 0x3}, /* Freq 5755 */
+	{152, 	(RF_A_BAND | RF_A_BAND_HB),	 0x02, 0x3F, 0x30, 0x97, 0xD2, 0x40, 0x04, 0x40, 0x00, 0, 0, 1, 0x30, 0, 0x30, 0, 0, 0x3}, /* Freq 5760 */
+	{153, 	(RF_A_BAND | RF_A_BAND_HB),	 0x02, 0x3F, 0x68, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x01, 0, 0, 1, 0x30, 0, 0x30, 0, 0, 0x3}, /* Freq 5765 */
+	{154, 	(RF_A_BAND | RF_A_BAND_HB),	 0x02, 0x3F, 0x30, 0xDD, 0xD2, 0x40, 0x04, 0x40, 0x01, 0, 0, 1, 0x30, 0, 0x30, 0, 0, 0x3}, /* Freq 5770 */
+	{155, 	(RF_A_BAND | RF_A_BAND_HB),	 0x02, 0x3F, 0x68, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x03, 0, 0, 1, 0x30, 0, 0x30, 0, 0, 0x3}, /* Freq 5775 */
+	{156, 	(RF_A_BAND | RF_A_BAND_HB),	 0x02, 0x3F, 0x30, 0x97, 0xD2, 0x40, 0x04, 0x40, 0x02, 0, 0, 1, 0x30, 0, 0x30, 0, 0, 0x3}, /* Freq 5780 */
+	{157, 	(RF_A_BAND | RF_A_BAND_HB),	 0x02, 0x3F, 0x68, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x05, 0, 0, 1, 0x30, 0, 0x30, 0, 0, 0x3}, /* Freq 5785 */
+	{158, 	(RF_A_BAND | RF_A_BAND_HB),	 0x02, 0x3F, 0x30, 0x97, 0xD2, 0x40, 0x04, 0x40, 0x03, 0, 0, 1, 0x30, 0, 0x30, 0, 0, 0x3}, /* Freq 5790 */
+	{159, 	(RF_A_BAND | RF_A_BAND_HB),	 0x02, 0x3F, 0x68, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x07, 0, 0, 1, 0x30, 0, 0x30, 0, 0, 0x3}, /* Freq 5795 */
+	{160, 	(RF_A_BAND | RF_A_BAND_HB),	 0x02, 0x3F, 0x30, 0x97, 0xD2, 0x40, 0x04, 0x40, 0x04, 0, 0, 1, 0x30, 0, 0x30, 0, 0, 0x3}, /* Freq 5800 */
+	{161, 	(RF_A_BAND | RF_A_BAND_HB),	 0x02, 0x3F, 0x68, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x09, 0, 0, 1, 0x30, 0, 0x30, 0, 0, 0x3}, /* Freq 5805 */
+	{162, 	(RF_A_BAND | RF_A_BAND_HB),	 0x02, 0x3F, 0x30, 0xDD, 0xD2, 0x40, 0x04, 0x40, 0x05, 0, 0, 1, 0x30, 0, 0x30, 0, 0, 0x3}, /* Freq 5810 */
+	{163, 	(RF_A_BAND | RF_A_BAND_HB),	 0x02, 0x3F, 0x68, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x0B, 0, 0, 1, 0x30, 0, 0x30, 0, 0, 0x3}, /* Freq 5815 */
+	{164, 	(RF_A_BAND | RF_A_BAND_HB),	 0x02, 0x3F, 0x30, 0x97, 0xD2, 0x40, 0x04, 0x40, 0x06, 0, 0, 1, 0x30, 0, 0x30, 0, 0, 0x3}, /* Freq 5820 */
+	{165, 	(RF_A_BAND | RF_A_BAND_HB),	 0x02, 0x3F, 0x68, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x0D, 0, 0, 1, 0x30, 0, 0x30, 0, 0, 0x3}, /* Freq 5825 */
+	{166, 	(RF_A_BAND | RF_A_BAND_HB),	 0x02, 0x3F, 0x30, 0xDD, 0xD2, 0x40, 0x04, 0x40, 0x07, 0, 0, 1, 0x30, 0, 0x30, 0, 0, 0x3}, /* Freq 5830 */
+	{167, 	(RF_A_BAND | RF_A_BAND_HB),	 0x02, 0x3F, 0x68, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x0F, 0, 0, 1, 0x30, 0, 0x30, 0, 0, 0x3}, /* Freq 5835 */
+	{168, 	(RF_A_BAND | RF_A_BAND_HB),	 0x02, 0x3F, 0x30, 0x97, 0xD2, 0x40, 0x04, 0x40, 0x08, 0, 0, 1, 0x30, 0, 0x30, 0, 0, 0x3}, /* Freq 5840 */
+	{169, 	(RF_A_BAND | RF_A_BAND_HB),	 0x02, 0x3F, 0x68, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x11, 0, 0, 1, 0x30, 0, 0x30, 0, 0, 0x3}, /* Freq 5845 */
+	{170, 	(RF_A_BAND | RF_A_BAND_HB),	 0x02, 0x3F, 0x30, 0x97, 0xD2, 0x40, 0x04, 0x40, 0x09, 0, 0, 1, 0x30, 0, 0x30, 0, 0, 0x3}, /* Freq 5850 */
+	{171, 	(RF_A_BAND | RF_A_BAND_HB),	 0x02, 0x3F, 0x68, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x13, 0, 0, 1, 0x30, 0, 0x30, 0, 0, 0x3}, /* Freq 5855 */
+	{172, 	(RF_A_BAND | RF_A_BAND_HB),	 0x02, 0x3F, 0x30, 0x97, 0xD2, 0x40, 0x04, 0x40, 0x0A, 0, 0, 1, 0x30, 0, 0x30, 0, 0, 0x3}, /* Freq 5860 */
+	{173, 	(RF_A_BAND | RF_A_BAND_HB),	 0x02, 0x3F, 0x68, 0xDD, 0xD2, 0x40, 0x10, 0x40, 0x15, 0, 0, 1, 0x30, 0, 0x30, 0, 0, 0x3}, /* Freq 5865 */
+};
+unsigned char NUM_OF_MT76x0_CHNL = (sizeof(MT76x0_Frequency_Plan) / sizeof(MT76x0_FREQ_ITEM));
+
+
+static MT76x0_RF_SWITCH_ITEM MT76x0_RF_INT_PA_RegTb[] = {
+#if 0	
+	{RF_BANK6,	RF_R45,		RF_A_BAND_LB,	0x59},
+	{RF_BANK6,	RF_R45,		RF_A_BAND_MB,	0x39},
+	{RF_BANK6,	RF_R45,		RF_A_BAND_HB,	0x19},
+
+	{RF_BANK6,	RF_R50,		RF_A_BAND_LB,	0x18},
+	{RF_BANK6,	RF_R50,		RF_A_BAND_MB,	0x18},
+	{RF_BANK6,	RF_R50,		RF_A_BAND_HB,	0x18},
+
+	{RF_BANK6,	RF_R51,		RF_A_BAND_LB,	0x10},
+	{RF_BANK6,	RF_R51,		RF_A_BAND_MB,	0x10},
+	{RF_BANK6,	RF_R51,		RF_A_BAND_HB,	0x10},
+
+	{RF_BANK6,	RF_R52,		RF_A_BAND_LB,	0x1F},
+	{RF_BANK6,	RF_R52,		RF_A_BAND_MB,	0x1F},
+	{RF_BANK6,	RF_R52,		RF_A_BAND_HB,	0x1F},
+
+	{RF_BANK6,	RF_R53,		RF_A_BAND_LB,	0x18},
+	{RF_BANK6,	RF_R53,		RF_A_BAND_MB,	0x18},
+	{RF_BANK6,	RF_R53,		RF_A_BAND_HB,	0x18},
+
+	{RF_BANK6,	RF_R54,		RF_A_BAND_LB,	0x0C},
+	{RF_BANK6,	RF_R54,		RF_A_BAND_MB,	0x0C},
+	{RF_BANK6,	RF_R54,		RF_A_BAND_HB,	0x0C},
+
+	{RF_BANK6,	RF_R55,		RF_A_BAND_LB,	0x04},
+	{RF_BANK6,	RF_R55,		RF_A_BAND_MB,	0x04},
+	{RF_BANK6,	RF_R55,		RF_A_BAND_HB,	0x04},
+
+	{RF_BANK6,	RF_R56,		RF_A_BAND_LB,	0x1F},
+	{RF_BANK6,	RF_R56,		RF_A_BAND_MB,	0x1F},
+	{RF_BANK6,	RF_R56,		RF_A_BAND_HB,	0x1F},
+
+	{RF_BANK6,	RF_R57,		RF_A_BAND_LB,	0x1F},
+	{RF_BANK6,	RF_R57,		RF_A_BAND_MB,	0x1F},
+	{RF_BANK6,	RF_R57,		RF_A_BAND_HB,	0x1F},
+		
+	{RF_BANK6,	RF_R58,		RF_A_BAND_LB,	0x75},
+	{RF_BANK6,	RF_R58,		RF_A_BAND_MB,	0x73},
+	{RF_BANK6,	RF_R58,		RF_A_BAND_HB,	0x72},
+
+	{RF_BANK6,	RF_R59,		RF_A_BAND_LB,	0x04},
+	{RF_BANK6,	RF_R59,		RF_A_BAND_MB,	0x03},
+	{RF_BANK6,	RF_R59,		RF_A_BAND_HB,	0x02},
+#endif
+};
+unsigned int MT76x0_RF_INT_PA_RegTb_Size = (sizeof(MT76x0_RF_INT_PA_RegTb) / sizeof(MT76x0_RF_SWITCH_ITEM));
+
+
+
 /*
  * Register access.
  * All access to the CSR registers will go through the methods
@@ -65,6 +944,137 @@
 	rt2800_regbusy_read((__dev), H2M_MAILBOX_CSR, \
 			    H2M_MAILBOX_CSR_OWNER, (__reg))
 
+#define WAIT_FOR_RFCSR_MT7630(__dev, __reg)	\
+	rt2800_regbusy_read((__dev), RF_CSR_CFG, RF_CSR_CFG0_BUSY, (__reg))
+
+/* new types for Media Specific Indications */
+/* Extension channel offset */
+#define EXTCHA_NONE			0
+#define EXTCHA_ABOVE		0x1
+#define EXTCHA_BELOW		0x3
+int rtmp_mac_set_ctrlch(struct rt2x00_dev *rt2x00dev, int extch)
+{
+	UINT32 val, band_cfg;
+
+	rt2800_register_read(rt2x00dev, TX_BAND_CFG, &band_cfg);
+	val = band_cfg & (~0x1);
+	switch (extch)
+	{
+		case EXTCHA_ABOVE:
+			val &= (~0x1);
+			break;
+		case EXTCHA_BELOW:
+			val |= (0x1);
+			break;
+		case EXTCHA_NONE:
+			val &= (~0x1);
+			break;
+	}
+
+	if (val != band_cfg)
+		rt2800_register_write(rt2x00dev, TX_BAND_CFG, val);
+	
+	return 0;
+}
+
+static int rtmp_bbp_set_bw(struct rt2x00_dev *rt2x00dev, int bw)
+{
+	u32 core, core_r1 = 0, core_r4 = 0;
+	u32 agc, agc_r0 = 0;
+
+	rt2800_register_read(rt2x00dev, CORE_R1, &core_r1);
+
+	core = (core_r1 & (~0x58));
+
+	rt2800_register_read(rt2x00dev, AGC1_R0, &agc_r0);
+	agc = agc_r0 & (~0x7000);
+	switch (bw)
+	{
+		case BW_40:
+			core |= 0x10;
+			agc |= 0x3000;
+			break;
+		case BW_20:
+			core &= (~0x18);
+			agc |= 0x1000;
+			break;
+	}
+
+	if (core != core_r1) 
+	{
+
+			if (bw == BW_80)
+				core |= 0x40;
+			/*
+				Hold BBP in reset by setting CORE_R4[0]=1
+			*/
+			rt2800_register_read(rt2x00dev, CORE_R4, &core_r4);
+			core_r4 |= 0x00000001;
+			rt2800_register_write(rt2x00dev, CORE_R4, core_r4);
+
+			/*
+				Wait 0.5 us to ensure BBP is in the idle state.
+			*/
+			udelay(50);
+			rt2800_register_write(rt2x00dev, CORE_R1, core);
+
+
+			/*
+				Wait 0.5 us for BBP clocks to settle.
+			*/
+			udelay(50);
+
+			/*
+				Release BBP from reset by clearing CORE_R4[0].
+			*/
+			rt2800_register_read(rt2x00dev, CORE_R4, &core_r4);
+			core_r4 &= ~(0x00000001);
+			rt2800_register_write(rt2x00dev, CORE_R4, core_r4);
+
+	}
+
+	if (agc != agc_r0) {
+		rt2800_register_write(rt2x00dev, AGC1_R0, agc);
+	}
+	return 0;
+}
+
+int rtmp_bbp_set_ctrlch(struct rt2x00_dev *rt2x00dev, int ext_ch)
+{
+	UINT32 agc, agc_r0 = 0;
+	UINT32 be, be_r0 = 0;
+
+
+	rt2800_register_read(rt2x00dev, AGC1_R0, &agc_r0);
+	agc = agc_r0 & (~0x300);
+	rt2800_register_read(rt2x00dev, TXBE_R0, &be_r0);
+	be = (be_r0 & (~0x03));
+	
+		switch (ext_ch)
+		{
+			case EXTCHA_BELOW:
+				agc |= 0x100;
+				be |= 0x01;
+				break;
+			case EXTCHA_ABOVE:
+				agc &= (~0x300);
+				be &= (~0x03);
+				break;
+			case EXTCHA_NONE:
+			default:
+				agc &= (~0x300);
+				be &= (~0x03);
+				break;
+		}
+		
+	if (agc != agc_r0)
+		rt2800_register_write(rt2x00dev, AGC1_R0, agc);
+
+	if (be != be_r0)
+		rt2800_register_write(rt2x00dev, TXBE_R0, be);
+	return 1;
+}
+
 static inline bool rt2800_is_305x_soc(struct rt2x00_dev *rt2x00dev)
 {
 	/* check for rt2872 on SoC */
@@ -82,11 +1092,28 @@ static inline bool rt2800_is_305x_soc(struct rt2x00_dev *rt2x00dev)
 	return false;
 }
 
+static void rt2800_MT7630_bbp_write(struct rt2x00_dev *rt2x00dev,
+			     const unsigned int word, const unsigned int value)
+{
+	rt2800_register_write(rt2x00dev,word, value);
+	//printk("rt2800_MT7630_bbp_write [0x%x]=0x%x\n",word,value);
+}
+
+static void rt2800_MT7630_bbp_read(struct rt2x00_dev *rt2x00dev,
+			    const unsigned int word, u32 *pvalue)
+{
+	rt2800_register_read(rt2x00dev,word, pvalue);
+}
+
 static void rt2800_bbp_write(struct rt2x00_dev *rt2x00dev,
 			     const unsigned int word, const u8 value)
 {
 	u32 reg;
-
+	if (rt2x00_rt(rt2x00dev, MT7630))
+	{
+		//printk("MT7630 use new bbp write BBP=%d value=%d\n",word,value);
+		return;
+	}
 	mutex_lock(&rt2x00dev->csr_mutex);
 
 	/*
@@ -111,7 +1138,11 @@ static void rt2800_bbp_read(struct rt2x00_dev *rt2x00dev,
 			    const unsigned int word, u8 *value)
 {
 	u32 reg;
-
+	if (rt2x00_rt(rt2x00dev, MT7630))
+	{
+		//printk("MT7630 use new bbp read BBP=%d\n",word);
+		return;
+	}
 	mutex_lock(&rt2x00dev->csr_mutex);
 
 	/*
@@ -143,6 +1174,11 @@ static void rt2800_rfcsr_write(struct rt2x00_dev *rt2x00dev,
 			       const unsigned int word, const u8 value)
 {
 	u32 reg;
+	if (rt2x00_rt(rt2x00dev, MT7630))
+	{
+		//printk("MT7630 use new rfcsr write RF=%d Value=%d\n",word,value);
+		return;
+	}
 
 	mutex_lock(&rt2x00dev->csr_mutex);
 
@@ -167,6 +1203,12 @@ static void rt2800_rfcsr_read(struct rt2x00_dev *rt2x00dev,
 			      const unsigned int word, u8 *value)
 {
 	u32 reg;
+	if (rt2x00_rt(rt2x00dev, MT7630))
+	{
+		//printk("MT7630 use new rfcsr read RF=%d\n",word);
+		*value = 0xff;
+		return;
+	}
 
 	mutex_lock(&rt2x00dev->csr_mutex);
 
@@ -198,6 +1240,11 @@ static void rt2800_rf_write(struct rt2x00_dev *rt2x00dev,
 			    const unsigned int word, const u32 value)
 {
 	u32 reg;
+	if (rt2x00_rt(rt2x00dev, MT7630))
+	{
+		//printk("MT7630 use new rf write\n");
+		return;
+	}
 
 	mutex_lock(&rt2x00dev->csr_mutex);
 
@@ -367,6 +1414,171 @@ static void rt2800_eeprom_read_from_array(struct rt2x00_dev *rt2x00dev,
 	rt2x00_eeprom_read(rt2x00dev, index + offset, data);
 }
 
+static int rt2800_MT7630_rfcsr_write(struct rt2x00_dev *rt2x00dev,
+			       const u8 word, const u8 value,const u8 bank)
+{
+	RLT_RF_CSR_CFG rfcsr = { { 0 } };
+	unsigned int i = 1;
+	int	 ret;
+
+	//ASSERT((word <= 127));
+
+	ret = 0;
+	do
+	{
+		rt2800_register_read(rt2x00dev, RF_CSR_CFG, &rfcsr.word);
+
+		if (!rfcsr.field.RF_CSR_KICK)
+			break;
+		i++;
+	}
+	while ((i < 100));
+
+	if ((i == 100))
+	{
+		printk("rt2800_MT7630_rfcsr_write Retry count exhausted or device removed!!!\n");
+		goto done;
+	}
+
+	rfcsr.field.RF_CSR_WR = 1;
+	rfcsr.field.RF_CSR_KICK = 1;
+	rfcsr.field.RF_CSR_REG_BANK = bank;
+	rfcsr.field.RF_CSR_REG_ID = word;
+
+	rfcsr.field.RF_CSR_DATA = value;
+	rt2800_register_write(rt2x00dev, RF_CSR_CFG, rfcsr.word);
+	//printk("rlt_rf_write bank=0x%x ID=0x%x value=0x%x\n",bank, word, value);
+	ret = 0;
+
+done:
+	return ret;
+}
+
+static int rt2800_MT7630_rfcsr_read(struct rt2x00_dev *rt2x00dev,
+			       const u8 word, u8 *value,const u8 bank)
+{
+	RLT_RF_CSR_CFG rfcsr = { { 0 } };
+	unsigned int i=0, k=0;
+	int	 ret = 1;
+
+	//ASSERT((word <= 127));
+
+	for (i=0; i<100; i++)
+	{
+		rt2800_register_read(rt2x00dev, RF_CSR_CFG, &rfcsr.word);
+
+		if (rfcsr.field.RF_CSR_KICK == 1)
+				continue;
+
+		rfcsr.word = 0;
+		rfcsr.field.RF_CSR_WR = 0;
+		rfcsr.field.RF_CSR_KICK = 1;
+		rfcsr.field.RF_CSR_REG_ID = word;
+		rfcsr.field.RF_CSR_REG_BANK = bank;
+		rt2800_register_write(rt2x00dev, RF_CSR_CFG, rfcsr.word);
+
+		for (k=0; k<100; k++)
+		{
+			rt2800_register_read(rt2x00dev, RF_CSR_CFG, &rfcsr.word);
+
+			if (rfcsr.field.RF_CSR_KICK == 0)
+				break;
+		}
+
+		if ((rfcsr.field.RF_CSR_KICK == 0) &&
+			(rfcsr.field.RF_CSR_REG_ID == word) &&
+			(rfcsr.field.RF_CSR_REG_BANK == bank))
+		{
+			*value = (u8)(rfcsr.field.RF_CSR_DATA);
+			break;
+		}
+	}
+
+	if (rfcsr.field.RF_CSR_KICK == 1)
+	{
+		printk("RF read R%d=0x%X fail, i[%d], k[%d]\n", word, rfcsr.word,i,k);
+		goto done;
+	}
+	ret = 0;
+
+done:
+	return ret;
+}
+
+#if 0
+static int rt2800_enable_wlan_mt7630(struct rt2x00_dev *rt2x00dev)
+{
+	u32 reg;
+	int i, count;
+
+	rt2800_register_read(rt2x00dev, WLAN_FUN_CTRL, &reg);
+
+	rt2x00_set_field32(&reg, WLAN_GPIO_OUT_OE_BIT_ALL, 0xff);
+	rt2x00_set_field32(&reg, FRC_WL_ANT_SET, 0);
+
+	if (rt2x00_get_field32(reg, WLAN_EN))
+	{
+		rt2x00_set_field32(&reg, WLAN_RSV1, 1);
+		rt2x00_set_field32(&reg, WLAN_RESET, 1);
+		rt2800_register_write(rt2x00dev, WLAN_FUN_CTRL, reg);
+		printk("Reset(1) WlanFunCtrl.word = 0x%x\n", reg);
+		udelay(2);
+		rt2x00_set_field32(&reg, WLAN_RSV1, 0);
+		rt2x00_set_field32(&reg, WLAN_RESET, 0);
+		rt2800_register_write(rt2x00dev, WLAN_FUN_CTRL, reg);
+		printk("Reset(2) WlanFunCtrl.word = 0x%x\n", reg);
+		udelay(2);
+	}
+
+	rt2x00_set_field32(&reg, WLAN_CLK_EN, 1);
+	rt2x00_set_field32(&reg, WLAN_EN, 1);
+	rt2800_register_write(rt2x00dev, WLAN_FUN_CTRL, reg);
+
+	udelay(REGISTER_BUSY_DELAY);
+
+	count = 0;
+	do {
+		/*
+		 * Check PLL_LD & XTAL_RDY.
+		 */
+		for (i = 0; i < REGISTER_BUSY_COUNT; i++) {
+			rt2800_register_read(rt2x00dev, CMB_CTRL, &reg);
+			if (rt2x00_get_field32(reg, PLL_LD) &&
+			    rt2x00_get_field32(reg, XTAL_RDY))
+				break;
+			udelay(REGISTER_BUSY_DELAY);
+		}
+
+		if (i >= REGISTER_BUSY_COUNT) {
+
+			if (count >= 10)
+				return -EIO;
+
+			rt2x00_set_field32(&reg, WLAN_CLK_EN, 0);
+			rt2x00_set_field32(&reg, WLAN_EN, 0);
+			rt2800_register_write(rt2x00dev, WLAN_FUN_CTRL, reg);
+			udelay(2);
+
+			rt2x00_set_field32(&reg, WLAN_CLK_EN, 1);
+			rt2x00_set_field32(&reg, WLAN_EN, 1);
+			rt2800_register_write(rt2x00dev, WLAN_FUN_CTRL, reg);
+			udelay(2);
+
+			udelay(REGISTER_BUSY_DELAY);
+			count++;
+		} else {
+			count = 0;
+		}
+
+
+	} while (count != 0);
+
+		rt2800_register_read(rt2x00dev, WLAN_FUN_CTRL, &reg);
+		printk("<== rt2800_enable_wlan_mt7630():  WlanFunCtrl = 0x%x\n", reg);
+	return 0;
+}
+#endif
+
 static int rt2800_enable_wlan_rt3290(struct rt2x00_dev *rt2x00dev)
 {
 	u32 reg;
@@ -434,6 +1646,9 @@ void rt2800_mcu_request(struct rt2x00_dev *rt2x00dev,
 {
 	u32 reg;
 
+	 if  (rt2x00_rt(rt2x00dev, MT7630))
+		return;
+	 
 	/*
 	 * SOC devices don't support MCU requests.
 	 */
@@ -504,9 +1719,9 @@ EXPORT_SYMBOL_GPL(rt2800_wait_wpdma_ready);
 
 void rt2800_disable_wpdma(struct rt2x00_dev *rt2x00dev)
 {
-	u32 reg;
-
+	u32 reg = 0;
 	rt2800_register_read(rt2x00dev, WPDMA_GLO_CFG, &reg);
+	reg &= 0xff0;
 	rt2x00_set_field32(&reg, WPDMA_GLO_CFG_ENABLE_TX_DMA, 0);
 	rt2x00_set_field32(&reg, WPDMA_GLO_CFG_TX_DMA_BUSY, 0);
 	rt2x00_set_field32(&reg, WPDMA_GLO_CFG_ENABLE_RX_DMA, 0);
@@ -589,6 +1804,8 @@ int rt2800_check_firmware(struct rt2x00_dev *rt2x00dev,
 	 */
 	if (rt2x00_is_usb(rt2x00dev) || rt2x00_rt(rt2x00dev, RT3290))
 		fw_len = 4096;
+	else if  (rt2x00_rt(rt2x00dev, MT7630))
+		fw_len = len;
 	else
 		fw_len = 8192;
 
@@ -614,13 +1831,15 @@ int rt2800_check_firmware(struct rt2x00_dev *rt2x00dev,
 	 * 8kb firmware files must be checked as if it were
 	 * 2 separate firmware files.
 	 */
-	while (offset < len) {
-		if (!rt2800_check_firmware_crc(data + offset, fw_len))
-			return FW_BAD_CRC;
+	 if (!rt2x00_rt(rt2x00dev, MT7630) )
+	 {
+		while (offset < len) {
+			if (!rt2800_check_firmware_crc(data + offset, fw_len))
+				return FW_BAD_CRC;
 
-		offset += fw_len;
-	}
-
+			offset += fw_len;
+		}
+	 }
 	return FW_OK;
 }
 EXPORT_SYMBOL_GPL(rt2800_check_firmware);
@@ -660,7 +1879,11 @@ int rt2800_load_firmware(struct rt2x00_dev *rt2x00dev,
 			rt2x00_set_field32(&reg, AUX_CTRL_WAKE_PCIE_EN, 1);
 			rt2800_register_write(rt2x00dev, AUX_CTRL, reg);
 		}
-		rt2800_register_write(rt2x00dev, PWR_PIN_CFG, 0x00000002);
+
+		if (rt2x00_rt(rt2x00dev, MT7630))
+			rt2800_register_write(rt2x00dev, PWR_PIN_CFG, 0x00000000);
+		else	
+			rt2800_register_write(rt2x00dev, PWR_PIN_CFG, 0x00000002);
 	}
 
 	rt2800_disable_wpdma(rt2x00dev);
@@ -673,6 +1896,28 @@ int rt2800_load_firmware(struct rt2x00_dev *rt2x00dev,
 	/*
 	 * Wait for device to stabilize.
 	 */
+	if (rt2x00_rt(rt2x00dev, MT7630))
+	{
+		for (i = 0; i < REGISTER_BUSY_COUNT; i++)
+		{
+			rt2800_register_read(rt2x00dev, 0x0730, &reg);
+			if (reg == 0x1)
+				break;
+			msleep(1);
+		} 
+
+		printk("%s: COM_REG0(0x%x) = 0x%x\n", __FUNCTION__, 0x0730, reg);
+
+		if (reg != 0x1)
+		{
+			rt2800_register_read(rt2x00dev, 0x0700, &reg);
+			printk("%s: 0x0700 = 0x%x\n", __FUNCTION__, reg);
+
+			rt2800_register_read(rt2x00dev, 0x0704, &reg);
+			printk("%s: 0x%x = 0x%x\n", __FUNCTION__, 0x0704, reg);
+			ERROR(rt2x00dev, "COM_REG0 register not ready.\n");
+		}
+	} else {	 
 	for (i = 0; i < REGISTER_BUSY_COUNT; i++) {
 		rt2800_register_read(rt2x00dev, PBF_SYS_CTRL, &reg);
 		if (rt2x00_get_field32(reg, PBF_SYS_CTRL_READY))
@@ -684,7 +1929,7 @@ int rt2800_load_firmware(struct rt2x00_dev *rt2x00dev,
 		rt2x00_err(rt2x00dev, "PBF system register not ready\n");
 		return -EBUSY;
 	}
-
+	}
 	/*
 	 * Disable DMA, will be reenabled later when enabling
 	 * the radio.
@@ -709,13 +1954,42 @@ EXPORT_SYMBOL_GPL(rt2800_load_firmware);
 void rt2800_write_tx_data(struct queue_entry *entry,
 			  struct txentry_desc *txdesc)
 {
+	struct rt2x00_dev *rt2x00dev = entry->queue->rt2x00dev;
 	__le32 *txwi = rt2800_drv_get_txwi(entry);
+	TXWI_STRUC *pTxWI;
 	u32 word;
 	int i;
 
 	/*
 	 * Initialize TX Info descriptor
 	 */
+	pTxWI = (TXWI_STRUC *) txwi;
+	if (rt2x00_rt(rt2x00dev, MT7630))
+	{
+		memset(pTxWI,0, 20);
+		pTxWI->TxWIFRAG = test_bit(ENTRY_TXD_MORE_FRAG, &txdesc->flags);
+		pTxWI->TxWIACK =test_bit(ENTRY_TXD_ACK, &txdesc->flags);
+		pTxWI->TxWITXOP = txdesc->u.ht.txop;
+		pTxWI->TxWIWirelessCliID = test_bit(ENTRY_TXD_ENCRYPT, &txdesc->flags) ? txdesc->key_idx : txdesc->u.ht.wcid;
+		pTxWI->TxWITS =  test_bit(ENTRY_TXD_REQ_TIMESTAMP, &txdesc->flags);
+		pTxWI->TxWIMPDUByteCnt = txdesc->length;
+		pTxWI->TxWICFACK = 0;
+		pTxWI->TxWIShortGI =  test_bit(ENTRY_TXD_HT_SHORT_GI, &txdesc->flags);
+		pTxWI->TxWISTBC =  txdesc->u.ht.stbc;
+		pTxWI->TxWIMCS = txdesc->u.ht.mcs;
+		pTxWI->TxWINSEQ = test_bit(ENTRY_TXD_GENERATE_SEQ, &txdesc->flags);
+		pTxWI->TxWIPHYMODE = txdesc->rate_mode;
+		pTxWI->TxWIBW = test_bit(ENTRY_TXD_HT_BW_40, &txdesc->flags);
+		pTxWI->TxWIAMPDU =test_bit(ENTRY_TXD_HT_AMPDU, &txdesc->flags);
+		pTxWI->TxWIBAWinSize = txdesc->u.ht.ba_size;
+		pTxWI->TxWIMIMOps =test_bit(ENTRY_TXD_HT_MIMO_PS, &txdesc->flags);
+		pTxWI->TxWIMpduDensity=txdesc->u.ht.mpdu_density;
+		pTxWI->TxWIPacketId = (entry->queue->qid == 0)? 5 : entry->queue->qid;//pTxWI->TxWIMCS;
+		pTxWI->TxWIIV = 0;
+		pTxWI->TxWIEIV = 0;
+		return;
+	}
+
 	rt2x00_desc_read(txwi, 0, &word);
 	rt2x00_set_field32(&word, TXWI_W0_FRAG,
 			   test_bit(ENTRY_TXD_MORE_FRAG, &txdesc->flags));
@@ -764,6 +2038,14 @@ void rt2800_write_tx_data(struct queue_entry *entry,
 	 */
 	for (i = 2; i < entry->queue->winfo_size / sizeof(__le32); i++)
 		_rt2x00_desc_write(txwi, i, 0);
+
+	if (rt2x00_rt(rt2x00dev, MT7630))
+	{
+		rt2x00_desc_read(txwi, 4, &word);
+		rt2x00_set_field32(&word, TXWI_W1_PACKETID_QUEUE_MT7630, entry->queue->qid);
+		rt2x00_set_field32(&word, TXWI_W1_PACKETID_ENTRY_MT7630, (entry->entry_idx % 3) + 1);
+		rt2x00_desc_write(txwi, 4, word);
+	}
 }
 EXPORT_SYMBOL_GPL(rt2800_write_tx_data);
 
@@ -813,9 +2095,95 @@ static int rt2800_agc_to_rssi(struct rt2x00_dev *rt2x00dev, u32 rxwi_w2)
 void rt2800_process_rxwi(struct queue_entry *entry,
 			 struct rxdone_entry_desc *rxdesc)
 {
+	struct data_queue *queue;
+	struct rt2x00_dev *rt2x00dev;
+	RXWI_STRUC *pRxWI;
+	
 	__le32 *rxwi = (__le32 *) entry->skb->data;
 	u32 word;
 
+	pRxWI = (RXWI_STRUC *) entry->skb->data;
+	queue = entry->queue;
+	rt2x00dev = queue->rt2x00dev;
+	
+	
+
+	if (rt2x00_rt(rt2x00dev, MT7630))
+	{
+			//rt2x00_desc_read(rxwi, 0, &word);	
+			
+		rxdesc->cipher = 0;//pRxWI->RxWIMPDUByteCnt;//pRxWI.rt2x00_get_field32(word, RXWI_W0_7630_UDF);
+		rxdesc->size = pRxWI->RxWIMPDUByteCnt;//rt2x00_get_field32(word, RXWI_W0_7630_MPDU_TOTAL_BYTE_COUNT);
+		//printk("MPDU_TOTAL_BYTE_COUNT=%d\n",rxdesc->size );
+		//rt2x00_desc_read(rxwi, 1, &word);
+
+		if (pRxWI->RxWISGI)
+			rxdesc->flags |= RX_FLAG_SHORT_GI;
+
+		if (pRxWI->RxWIBW)
+			rxdesc->flags |= RX_FLAG_40MHZ;
+
+		/*
+		 * Detect RX rate, always use MCS as signal type.
+		 */
+		rxdesc->dev_flags |= RXDONE_SIGNAL_MCS;
+		rxdesc->signal =pRxWI->RxWIMCS; //rt2x00_get_field32(word, RXWI_W1_7630_MCS);
+		rxdesc->rate_mode = pRxWI->RxWIPhyMode;//rt2x00_get_field32(word, RXWI_W1_7630_PHYMODE);
+		//printk("rate_mode=%d\n",rxdesc->rate_mode  );
+		/*
+		 * Mask of 0x8 bit to remove the short preamble flag.
+		 */
+		if (rxdesc->rate_mode == RATE_MODE_CCK)
+			rxdesc->signal &= ~0x8;
+
+		//rt2x00_desc_read(pRxWI->RxWIRSSI0, 0, &word);
+		/*
+		 * Convert descriptor AGC value to RSSI value.
+		 */
+		{
+			s8 rssi0 = pRxWI->RxWIRSSI0;
+			s8 rssi1 = pRxWI->RxWIRSSI1;
+			s8 rssi2 = pRxWI->RxWIRSSI2;
+			u16 eeprom;
+			u8 offset0;
+			u8 offset1;
+			u8 offset2;
+
+			if (rt2x00dev->curr_band == IEEE80211_BAND_2GHZ) {
+				rt2x00_eeprom_read(rt2x00dev, EEPROM_RSSI_BG, &eeprom);
+				offset0 = rt2x00_get_field16(eeprom, EEPROM_RSSI_BG_OFFSET0);
+				offset1 = rt2x00_get_field16(eeprom, EEPROM_RSSI_BG_OFFSET1);
+				rt2x00_eeprom_read(rt2x00dev, EEPROM_RSSI_BG2, &eeprom);
+				offset2 = rt2x00_get_field16(eeprom, EEPROM_RSSI_BG2_OFFSET2);
+			} else {
+				rt2x00_eeprom_read(rt2x00dev, EEPROM_RSSI_A, &eeprom);
+				offset0 = rt2x00_get_field16(eeprom, EEPROM_RSSI_A_OFFSET0);
+				offset1 = rt2x00_get_field16(eeprom, EEPROM_RSSI_A_OFFSET1);
+				rt2x00_eeprom_read(rt2x00dev, EEPROM_RSSI_A2, &eeprom);
+				offset2 = rt2x00_get_field16(eeprom, EEPROM_RSSI_A2_OFFSET2);
+			}
+			rssi0 = (rssi0) ? (-12 - offset0 - rt2x00dev->lna_gain - rssi0) : -128;
+			rssi1 = (rssi1) ? (-12 - offset1 - rt2x00dev->lna_gain - rssi1) : -128;
+			rssi2 = (rssi2) ? (-12 - offset2 - rt2x00dev->lna_gain - rssi2) : -128;
+
+			/*
+			 * mac80211 only accepts a single RSSI value. Calculating the
+			 * average doesn't deliver a fair answer either since -60:-60 would
+			 * be considered equally good as -50:-70 while the second is the one
+			 * which gives less energy...
+			 */
+			rssi0 = max(rssi0, rssi1);
+			rxdesc->rssi = max(rssi0, rssi2);
+		}		 
+		//i = rt2800_agc_to_rssi(entry->queue->rt2x00dev, word);
+		
+		/*
+		 * Remove RXWI descriptor from start of buffer.
+		 */
+		 pRxWI = NULL;
+		skb_pull(entry->skb, 28);
+		
+	} else {
 	rt2x00_desc_read(rxwi, 0, &word);
 
 	rxdesc->cipher = rt2x00_get_field32(word, RXWI_W0_UDF);
@@ -852,6 +2220,7 @@ void rt2800_process_rxwi(struct queue_entry *entry,
 	 * Remove RXWI descriptor from start of the buffer.
 	 */
 	skb_pull(entry->skb, entry->queue->winfo_size);
+	}
 }
 EXPORT_SYMBOL_GPL(rt2800_process_rxwi);
 
@@ -863,19 +2232,31 @@ void rt2800_txdone_entry(struct queue_entry *entry, u32 status, __le32 *txwi)
 	u32 word;
 	u16 mcs, real_mcs;
 	int aggr, ampdu;
+	TX_STA_FIFO_STRUC	StaFifo;
+	TXWI_STRUC *pTxWI;
 
+	StaFifo.word = status;	
 	/*
 	 * Obtain the status about this packet.
 	 */
 	txdesc.flags = 0;
 	rt2x00_desc_read(txwi, 0, &word);
+	if (rt2x00_rt(rt2x00dev, MT7630))
+	{
+		pTxWI = (TXWI_STRUC *) txwi;
+		mcs= pTxWI->TxWIMCS;
+		ampdu=pTxWI->TxWIAMPDU;
 
-	mcs = rt2x00_get_field32(word, TXWI_W0_MCS);
-	ampdu = rt2x00_get_field32(word, TXWI_W0_AMPDU);
+		//printk("mcs =%d ampdu=%d\n",mcs,ampdu);
+		real_mcs = StaFifo.field.SuccessRate;//rt2x00_get_field32(status, TX_STA_FIFO_MCS);
+		aggr = StaFifo.field.TxAggre;//rt2x00_get_field32(status, TX_STA_FIFO_TX_AGGRE);
+	} else {
+		mcs = rt2x00_get_field32(word, TXWI_W0_MCS);
+		ampdu = rt2x00_get_field32(word, TXWI_W0_AMPDU);
 
-	real_mcs = rt2x00_get_field32(status, TX_STA_FIFO_MCS);
-	aggr = rt2x00_get_field32(status, TX_STA_FIFO_TX_AGGRE);
-
+		real_mcs = rt2x00_get_field32(status, TX_STA_FIFO_MCS);
+		aggr = rt2x00_get_field32(status, TX_STA_FIFO_TX_AGGRE);
+	}
 	/*
 	 * If a frame was meant to be sent as a single non-aggregated MPDU
 	 * but ended up in an aggregate the used tx rate doesn't correlate
@@ -907,7 +2288,8 @@ void rt2800_txdone_entry(struct queue_entry *entry, u32 status, __le32 *txwi)
 	 * always contains the MCS used for the last transmission, be
 	 * it successful or not.
 	 */
-	if (rt2x00_get_field32(status, TX_STA_FIFO_TX_SUCCESS)) {
+	if (StaFifo.field.TxSuccess) 
+	 {
 		/*
 		 * Transmission succeeded. The number of retries is
 		 * mcs - real_mcs
@@ -1156,8 +2538,10 @@ int rt2800_rfkill_poll(struct rt2x00_dev *rt2x00dev)
 {
 	u32 reg;
 
-	if (rt2x00_rt(rt2x00dev, RT3290)) {
+	vend_dbg("===>%s:MT7630\n", __FUNCTION__);
+	if (rt2x00_rt(rt2x00dev, RT3290) || rt2x00_rt(rt2x00dev, MT7630)) {
 		rt2800_register_read(rt2x00dev, WLAN_FUN_CTRL, &reg);
+		vend_dbg("rt2800_rfkill_poll WLAN_FUN_CTRL=0x%x\n",reg);
 		return rt2x00_get_field32(reg, WLAN_GPIO_IN_BIT0);
 	} else {
 		rt2800_register_read(rt2x00dev, GPIO_CTRL, &reg);
@@ -1246,8 +2630,10 @@ static void rt2800_config_wcid(struct rt2x00_dev *rt2x00dev,
 {
 	struct mac_wcid_entry wcid_entry;
 	u32 offset;
-
-	offset = MAC_WCID_ENTRY(wcid);
+	if (rt2x00_rt(rt2x00dev, MT7630))	
+		offset = MAC_WCID_ENTRY_7630(wcid);
+	else
+		offset = MAC_WCID_ENTRY(wcid);
 
 	memset(&wcid_entry, 0xff, sizeof(wcid_entry));
 	if (address)
@@ -1260,7 +2646,10 @@ static void rt2800_config_wcid(struct rt2x00_dev *rt2x00dev,
 static void rt2800_delete_wcid_attr(struct rt2x00_dev *rt2x00dev, int wcid)
 {
 	u32 offset;
-	offset = MAC_WCID_ATTR_ENTRY(wcid);
+	if (rt2x00_rt(rt2x00dev, MT7630))
+		offset = MAC_WCID_ATTR_ENTRY_7630(wcid);
+	else	
+		offset = MAC_WCID_ATTR_ENTRY(wcid);
 	rt2800_register_write(rt2x00dev, offset, 0);
 }
 
@@ -1269,7 +2658,8 @@ static void rt2800_config_wcid_attr_bssidx(struct rt2x00_dev *rt2x00dev,
 {
 	u32 offset = MAC_WCID_ATTR_ENTRY(wcid);
 	u32 reg;
-
+	if (rt2x00_rt(rt2x00dev, MT7630))
+		offset = MAC_WCID_ATTR_ENTRY_7630(wcid);
 	/*
 	 * The BSS Idx numbers is split in a main value of 3 bits,
 	 * and a extended field for adding one additional bit to the value.
@@ -1288,8 +2678,10 @@ static void rt2800_config_wcid_attr_cipher(struct rt2x00_dev *rt2x00dev,
 	struct mac_iveiv_entry iveiv_entry;
 	u32 offset;
 	u32 reg;
-
-	offset = MAC_WCID_ATTR_ENTRY(key->hw_key_idx);
+	if (rt2x00_rt(rt2x00dev, MT7630))
+		offset = MAC_WCID_ATTR_ENTRY_7630(key->hw_key_idx);
+	else
+		offset = MAC_WCID_ATTR_ENTRY(key->hw_key_idx);
 
 	if (crypto->cmd == SET_KEY) {
 		rt2800_register_read(rt2x00dev, offset, &reg);
@@ -1315,8 +2707,10 @@ static void rt2800_config_wcid_attr_cipher(struct rt2x00_dev *rt2x00dev,
 		rt2x00_set_field32(&reg, MAC_WCID_ATTRIBUTE_RX_WIUDF, 0);
 		rt2800_register_write(rt2x00dev, offset, reg);
 	}
-
-	offset = MAC_IVEIV_ENTRY(key->hw_key_idx);
+	if (rt2x00_rt(rt2x00dev, MT7630))
+		offset = MAC_IVEIV_ENTRY_7630(key->hw_key_idx);
+	else
+		offset = MAC_IVEIV_ENTRY(key->hw_key_idx);
 
 	memset(&iveiv_entry, 0, sizeof(iveiv_entry));
 	if ((crypto->cipher == CIPHER_TKIP) ||
@@ -1336,6 +2730,8 @@ int rt2800_config_shared_key(struct rt2x00_dev *rt2x00dev,
 	struct rt2x00_field32 field;
 	u32 offset;
 	u32 reg;
+	struct mac_wcid_entry wcid_entry;
+	int idx;
 
 	if (crypto->cmd == SET_KEY) {
 		key->hw_key_idx = (4 * crypto->bssidx) + key->keyidx;
@@ -1346,8 +2742,10 @@ int rt2800_config_shared_key(struct rt2x00_dev *rt2x00dev,
 		       sizeof(key_entry.tx_mic));
 		memcpy(key_entry.rx_mic, crypto->rx_mic,
 		       sizeof(key_entry.rx_mic));
-
-		offset = SHARED_KEY_ENTRY(key->hw_key_idx);
+		if (rt2x00_rt(rt2x00dev, MT7630))
+			offset = SHARED_KEY_ENTRY_7630(key->hw_key_idx);
+		else
+			offset = SHARED_KEY_ENTRY(key->hw_key_idx);
 		rt2800_register_multiwrite(rt2x00dev, offset,
 					      &key_entry, sizeof(key_entry));
 	}
@@ -1361,8 +2759,10 @@ int rt2800_config_shared_key(struct rt2x00_dev *rt2x00dev,
 	 */
 	field.bit_offset = 4 * (key->hw_key_idx % 8);
 	field.bit_mask = 0x7 << field.bit_offset;
-
-	offset = SHARED_KEY_MODE_ENTRY(key->hw_key_idx / 8);
+	if (rt2x00_rt(rt2x00dev, MT7630))
+		offset = SHARED_KEY_MODE_ENTRY_7630(key->hw_key_idx / 8);
+	else
+		offset = SHARED_KEY_MODE_ENTRY(key->hw_key_idx / 8);
 
 	rt2800_register_read(rt2x00dev, offset, &reg);
 	rt2x00_set_field32(&reg, field,
@@ -1377,6 +2777,26 @@ int rt2800_config_shared_key(struct rt2x00_dev *rt2x00dev,
 				       crypto->bssidx);
 	rt2800_config_wcid_attr_cipher(rt2x00dev, crypto, key);
 
+
+	if (crypto->cipher  == CIPHER_WEP64 || crypto->cipher  == CIPHER_WEP128)
+	{
+		for (idx = 33; idx <= 222; idx++) {
+			if (rt2x00_rt(rt2x00dev, MT7630))
+				offset = MAC_WCID_ENTRY_7630(idx);
+			else		
+				offset = MAC_WCID_ENTRY(idx);
+			rt2800_register_multiread(rt2x00dev, offset, &wcid_entry,
+						  sizeof(wcid_entry));
+			if (NdisEqualMemory(wcid_entry.mac,rt2x00dev->bssid,6 ))
+				break;
+		}
+
+		if (idx <= 222)
+		{
+			key->hw_key_idx = idx;
+			rt2800_config_wcid_attr_cipher(rt2x00dev, crypto, key);
+		}
+	}
 	return 0;
 }
 EXPORT_SYMBOL_GPL(rt2800_config_shared_key);
@@ -1403,8 +2823,10 @@ int rt2800_config_pairwise_key(struct rt2x00_dev *rt2x00dev,
 		       sizeof(key_entry.tx_mic));
 		memcpy(key_entry.rx_mic, crypto->rx_mic,
 		       sizeof(key_entry.rx_mic));
-
-		offset = PAIRWISE_KEY_ENTRY(key->hw_key_idx);
+		if (rt2x00_rt(rt2x00dev, MT7630))
+			offset = PAIRWISE_KEY_ENTRY_7630(key->hw_key_idx);
+		else
+			offset = PAIRWISE_KEY_ENTRY(key->hw_key_idx);
 		rt2800_register_multiwrite(rt2x00dev, offset,
 					      &key_entry, sizeof(key_entry));
 	}
@@ -1422,20 +2844,27 @@ int rt2800_sta_add(struct rt2x00_dev *rt2x00dev, struct ieee80211_vif *vif,
 		   struct ieee80211_sta *sta)
 {
 	int wcid;
+	struct ieee80211_sta_ht_cap *pht_cap;
 	struct rt2x00_sta *sta_priv = sta_to_rt2x00_sta(sta);
 	struct rt2800_drv_data *drv_data = rt2x00dev->drv_data;
 
+	pht_cap = &sta->ht_cap;
+	rt2x00dev->ht_cap=pht_cap->cap;
+	printk("===>%s:MT7630\n", __FUNCTION__);
 	/*
 	 * Search for the first free WCID entry and return the corresponding
 	 * index.
 	 */
 	wcid = find_first_zero_bit(drv_data->sta_ids, STA_IDS_SIZE) + WCID_START;
+	printk("===>%s:MT7630   wcid=%d\n", __FUNCTION__,wcid);
 
 	/*
 	 * Store selected wcid even if it is invalid so that we can
 	 * later decide if the STA is uploaded into the hw.
 	 */
 	sta_priv->wcid = wcid;
+	COPY_MAC_ADDR(rt2x00dev->bssid, sta->addr);
+	printk("Connect to AP MAC: %pM WCID=%d\n", rt2x00dev->bssid,sta_priv->wcid);
 
 	/*
 	 * No space left in the device, however, we can still communicate
@@ -1453,6 +2882,18 @@ int rt2800_sta_add(struct rt2x00_dev *rt2x00dev, struct ieee80211_vif *vif,
 	rt2800_config_wcid(rt2x00dev, sta->addr, wcid);
 	rt2800_config_wcid_attr_bssidx(rt2x00dev, wcid,
 				       rt2x00lib_get_bssidx(rt2x00dev, vif));
+
+	rt2x00dev->connected=1;
+	rt2x00dev->connect_channel=rt2x00dev->CommonCfg.CentralChannel;
+
+	BtAFHCtl(rt2x00dev, rt2x00dev->CommonCfg.BBPCurrentBW, rt2x00dev->CommonCfg.Channel, rt2x00dev->CommonCfg.CentralChannel, FALSE);
+	SendAndesAFH(rt2x00dev, rt2x00dev->CommonCfg.BBPCurrentBW,  rt2x00dev->CommonCfg.Channel, rt2x00dev->CommonCfg.CentralChannel, FALSE, 1);
+	MLMEHook(rt2x00dev, WLAN_CONNECTION_COMPLETION, 1);
+	udelay(5000);
+	BtAFHCtl(rt2x00dev, rt2x00dev->CommonCfg.BBPCurrentBW, rt2x00dev->CommonCfg.Channel, rt2x00dev->CommonCfg.CentralChannel, FALSE);
+	SendAndesAFH(rt2x00dev, rt2x00dev->CommonCfg.BBPCurrentBW,  rt2x00dev->CommonCfg.Channel, rt2x00dev->CommonCfg.CentralChannel, FALSE, 1);	
+	udelay(5000);
+	//Set_BtDump_Proc(rt2x00dev,1);	
 	return 0;
 }
 EXPORT_SYMBOL_GPL(rt2800_sta_add);
@@ -1467,6 +2908,21 @@ int rt2800_sta_remove(struct rt2x00_dev *rt2x00dev, int wcid)
 	 * Remove WCID entry, no need to clean the attributes as they will
 	 * get renewed when the WCID is reused.
 	 */
+	 u32 reg;
+	 printk("===>%s:MT7630\n", __FUNCTION__);
+	rt2800_config_wcid(rt2x00dev, NULL, wcid);
+	rt2x00dev->connected=0;
+	rt2x00dev->connect_channel=0;
+	Set_BtDump_Proc(rt2x00dev,1);
+	BtAFHCtl(rt2x00dev, rt2x00dev->CommonCfg.BBPCurrentBW, rt2x00dev->CommonCfg.Channel, rt2x00dev->CommonCfg.CentralChannel, TRUE);		
+      SendAndesAFH(rt2x00dev, rt2x00dev->CommonCfg.BBPCurrentBW,  rt2x00dev->CommonCfg.Channel, rt2x00dev->CommonCfg.CentralChannel, TRUE, 1);	
+	udelay(5000);
+	RTMP_IO_WRITE32(rt2x00dev, PCIE_REMAP_BASE4, 0x80000);
+	RTMP_IO_READ32(rt2x00dev, 0x100, &reg);
+	printk("===>%s:MT7630   0x80100 = 0x%x\n", __FUNCTION__,reg);
+	RTMP_IO_WRITE32(rt2x00dev, PCIE_REMAP_BASE4, 0x00);
+	printk("===>%s:MT7630   0x80100 = 0x%x\n", __FUNCTION__,reg);
+	//Set_BtDump_Proc(rt2x00dev,1);	 
 	rt2800_config_wcid(rt2x00dev, NULL, wcid);
 	__clear_bit(wcid - WCID_START, drv_data->sta_ids);
 
@@ -1793,6 +3249,42 @@ void rt2800_config_ant(struct rt2x00_dev *rt2x00dev, struct antenna_setup *ant)
 	u8 r1;
 	u8 r3;
 	u16 eeprom;
+	printk("===>%s:MT7630\n", __FUNCTION__);
+
+	if (rt2x00_rt(rt2x00dev, MT7630))
+	{
+		u32 txbe, txbe_r5;
+		u32 agc_r0, agc;
+		rt2800_MT7630_bbp_read(rt2x00dev, TXBE_R5, &txbe_r5);
+		txbe = txbe_r5 & (~0x3);
+		switch (ant->tx_chain_num -1 )
+		{
+			case 2:
+				txbe |= 0x3;
+				break;
+			case 1:
+			case 0:
+			default:		
+				txbe &= (~0x3);
+				break;
+		}
+
+		if (txbe != txbe_r5)
+			rt2800_MT7630_bbp_write(rt2x00dev, TXBE_R5, txbe);
+
+
+			rt2800_MT7630_bbp_read(rt2x00dev, AGC1_R0, &agc_r0);
+			agc = agc_r0 & (~0x18);
+			if(ant->rx_chain_num == 2)
+				agc |= (0x8);
+			else if(ant->rx_chain_num == 1)
+				agc |= (0x0);
+
+			if (agc != agc_r0)
+				rt2800_MT7630_bbp_write(rt2x00dev, AGC1_R0, agc);
+		printk("MT7630 set Tx/Rx Ant ant->tx_chain_num=%d Ant ant->rx_chain_num=%d\n",ant->tx_chain_num,ant->rx_chain_num);
+		return;
+	}
 
 	rt2800_bbp_read(rt2x00dev, 1, &r1);
 	rt2800_bbp_read(rt2x00dev, 3, &r3);
@@ -3105,6 +4597,357 @@ static void rt2800_iq_calibrate(struct rt2x00_dev *rt2x00dev, int channel)
 	rt2800_bbp_write(rt2x00dev, 159, cal != 0xff ? cal : 0);
 }
 
+static int rtmp_mac_set_band(struct rt2x00_dev *rt2x00dev, int  band)
+{
+	u32 val, band_cfg;
+
+	rt2800_register_read(rt2x00dev, TX_BAND_CFG, &band_cfg);
+	val = band_cfg & (~0x6);
+	switch (band)
+	{
+		case 1:
+			val |= 0x02;
+			break;
+		case 2:
+		default:
+			val |= 0x4;
+			break;
+	}
+
+	if (val != band_cfg)
+		rt2800_register_write(rt2x00dev, TX_BAND_CFG, val);
+
+	return 0;
+}
+
+static void rt2800_config_channel_rf7630(struct rt2x00_dev *rt2x00dev,
+					 struct ieee80211_conf *conf,
+					 struct rf_channel *rf,
+					 struct channel_info *info)
+{
+	unsigned char TxPwer = 0; /* Bbp94 = BBPR94_DEFAULT, TxPwer2 = DEFAULT_RF_TX_POWER; */
+	unsigned char RFValue = 0;
+	u32 RegValue = 0;
+	u32 Index;
+	u32 Value = 0, rf_phy_mode, rf_bw = RF_BW_20;
+	unsigned char RfValue = 0;
+	u32 IdReg = 0, MacReg = 0, i = 0, RfBand = 0;
+	const MT76x0_FREQ_ITEM *pMT76x0_freq_item = NULL;
+	unsigned char BBPCurrentBW;
+	vend_dbg("==>rt2800_config_channel_rf7630 ch%d\n",rf->channel);
+	//return;
+	
+	
+	rf_phy_mode = RF_G_BAND;
+	rt2800_register_read(rt2x00dev, EXT_CCA_CFG, &RegValue);
+	RegValue &= ~(0xFFF);
+
+	if (conf_is_ht40(conf))
+	{
+		//printk("ch is ht40\n");
+		rf_bw = RF_BW_40;
+		if (conf_is_ht40_minus(conf)) {
+			RegValue |= 0x2e1;
+		} else {
+			RegValue |= 0x1e4;
+		}
+		BBPCurrentBW=BW_40;
+	}
+	else
+	{
+		BBPCurrentBW=BW_20;
+		rf_bw = RF_BW_20;
+		RegValue |= 0x1e4;
+		
+	}
+	
+	rt2800_register_write(rt2x00dev, EXT_CCA_CFG, RegValue);
+	for(IdReg = 0; IdReg < MT76x0_RF_2G_Channel_0_RegTb_Size; IdReg++)
+	{
+		rt2800_MT7630_rfcsr_write(rt2x00dev,
+					MT76x0_RF_2G_Channel_0_RegTb[IdReg].Register,
+					MT76x0_RF_2G_Channel_0_RegTb[IdReg].Value,
+					MT76x0_RF_2G_Channel_0_RegTb[IdReg].Bank);
+	}
+
+	RfValue = 0x45;
+	rt2800_MT7630_rfcsr_write(rt2x00dev, RF_R00, RfValue, RF_BANK5);
+
+	RfValue = 0x44;
+	rt2800_MT7630_rfcsr_write(rt2x00dev, RF_R00, RfValue, RF_BANK6);
+	rtmp_mac_set_band(rt2x00dev, 2);
+	rt2800_register_write(rt2x00dev, TX_ALC_VGA3, 0x00050007);
+	rt2800_register_write(rt2x00dev, TX0_RF_GAIN_CORR, 0x003E0002);
+
+
+
+	
+	for (i = 0; i < NUM_OF_MT76x0_CHNL; i++)
+	{
+		if (rf->channel == MT76x0_Frequency_Plan[i].Channel)
+		{
+			RfBand = MT76x0_Frequency_Plan[i].Band;
+			pMT76x0_freq_item = &MT76x0_Frequency_Plan[i];
+			rt2800_MT7630_rfcsr_write(rt2x00dev, RF_R37, pMT76x0_freq_item->pllR37,RF_BANK0);
+			rt2800_MT7630_rfcsr_write(rt2x00dev, RF_R36, pMT76x0_freq_item->pllR36,RF_BANK0);
+			rt2800_MT7630_rfcsr_write(rt2x00dev, RF_R35, pMT76x0_freq_item->pllR35,RF_BANK0);
+			rt2800_MT7630_rfcsr_write(rt2x00dev, RF_R34, pMT76x0_freq_item->pllR34,RF_BANK0);
+			rt2800_MT7630_rfcsr_write(rt2x00dev, RF_R33, pMT76x0_freq_item->pllR33,RF_BANK0);
+			
+			rt2800_MT7630_rfcsr_read(rt2x00dev, RF_R32, &RFValue, RF_BANK0);
+			RFValue &= ~(0xE0);
+			RFValue |= pMT76x0_freq_item->pllR32_b7b5;
+			rt2800_MT7630_rfcsr_write(rt2x00dev, RF_R32, RFValue,RF_BANK0);
+
+			rt2800_MT7630_rfcsr_read(rt2x00dev, RF_R32, &RFValue, RF_BANK0);
+			RFValue &= ~(0x1F);
+			RFValue |= pMT76x0_freq_item->pllR32_b4b0;
+			rt2800_MT7630_rfcsr_write(rt2x00dev, RF_R32, RFValue,RF_BANK0);
+
+			rt2800_MT7630_rfcsr_read(rt2x00dev, RF_R31, &RFValue, RF_BANK0);
+			RFValue &= ~(0xE0);
+			RFValue |= pMT76x0_freq_item->pllR31_b7b5;
+			rt2800_MT7630_rfcsr_write(rt2x00dev, RF_R31, RFValue,RF_BANK0);
+
+			rt2800_MT7630_rfcsr_read(rt2x00dev, RF_R31, &RFValue, RF_BANK0);
+			RFValue &= ~(0x1F);
+			RFValue |= pMT76x0_freq_item->pllR31_b4b0;
+			rt2800_MT7630_rfcsr_write(rt2x00dev, RF_R31, RFValue,RF_BANK0);
+
+			rt2800_MT7630_rfcsr_read(rt2x00dev, RF_R30, &RFValue, RF_BANK0);
+			RFValue &= ~(0x80);
+			RFValue |= pMT76x0_freq_item->pllR30_b7;
+			rt2800_MT7630_rfcsr_write(rt2x00dev, RF_R30, RFValue,RF_BANK0);
+
+			rt2800_MT7630_rfcsr_read(rt2x00dev, RF_R30, &RFValue, RF_BANK0);
+			RFValue &= ~(0x7C);
+			RFValue |= pMT76x0_freq_item->pllR30_b6b2;
+			rt2800_MT7630_rfcsr_write(rt2x00dev, RF_R30, RFValue,RF_BANK0);
+
+			rt2800_MT7630_rfcsr_read(rt2x00dev, RF_R30, &RFValue, RF_BANK0);
+			RFValue &= ~(0x02);
+			RFValue |= (pMT76x0_freq_item->pllR30_b1 << 1);
+			rt2800_MT7630_rfcsr_write(rt2x00dev, RF_R30, RFValue,RF_BANK0);
+
+			RFValue = pMT76x0_freq_item->pll_n & 0x00FF;
+			rt2800_MT7630_rfcsr_write(rt2x00dev, RF_R29, RFValue,RF_BANK0);
+
+
+			rt2800_MT7630_rfcsr_read(rt2x00dev, RF_R30, &RFValue, RF_BANK0);
+			RFValue &= ~(0x1);
+			RFValue |= ((pMT76x0_freq_item->pll_n >> 8) & 0x0001);
+			rt2800_MT7630_rfcsr_write(rt2x00dev, RF_R30, RFValue,RF_BANK0);
+
+			rt2800_MT7630_rfcsr_read(rt2x00dev, RF_R28, &RFValue, RF_BANK0);
+			RFValue &= ~(0xC0);
+			RFValue |= pMT76x0_freq_item->pllR28_b7b6;
+			rt2800_MT7630_rfcsr_write(rt2x00dev, RF_R28, RFValue,RF_BANK0);
+
+			rt2800_MT7630_rfcsr_read(rt2x00dev, RF_R28, &RFValue, RF_BANK0);
+			RFValue &= ~(0x30);
+			RFValue |= pMT76x0_freq_item->pllR28_b5b4;
+			rt2800_MT7630_rfcsr_write(rt2x00dev, RF_R28, RFValue,RF_BANK0);
+
+			rt2800_MT7630_rfcsr_read(rt2x00dev, RF_R28, &RFValue, RF_BANK0);
+			RFValue &= ~(0x0C);
+			RFValue |= pMT76x0_freq_item->pllR28_b3b2;
+			rt2800_MT7630_rfcsr_write(rt2x00dev, RF_R28, RFValue,RF_BANK0);
+
+			RFValue = pMT76x0_freq_item->Pll_sdm_k & 0x000000FF;
+			rt2800_MT7630_rfcsr_write(rt2x00dev, RF_R26, RFValue,RF_BANK0);
+
+			RFValue = ((pMT76x0_freq_item->Pll_sdm_k >> 8) & 0x000000FF);
+			rt2800_MT7630_rfcsr_write(rt2x00dev, RF_R27, RFValue,RF_BANK0);
+
+			rt2800_MT7630_rfcsr_read(rt2x00dev, RF_R28, &RFValue, RF_BANK0);
+			RFValue &= ~(0x3);
+			RFValue |= ((pMT76x0_freq_item->Pll_sdm_k >> 16) & 0x0003);
+			rt2800_MT7630_rfcsr_write(rt2x00dev, RF_R28, RFValue,RF_BANK0);
+
+			
+			rt2800_MT7630_rfcsr_read(rt2x00dev, RF_R24, &RFValue, RF_BANK0);
+			RFValue &= ~(0x3);
+			RFValue |= pMT76x0_freq_item->pllR24_b1b0;
+			rt2800_MT7630_rfcsr_write(rt2x00dev, RF_R24, RFValue,RF_BANK0);
+
+			vend_dbg("SwitchChannel#%d\n",rf->channel);
+		}
+	}
+
+	
+	for(i = 0; i < MT76x0_RF_BW_Switch_Size; i++)
+	{
+		if (BBPCurrentBW == MT76x0_RF_BW_Switch[i].BwBand)
+		{
+			rt2800_MT7630_rfcsr_write(rt2x00dev, 
+						MT76x0_RF_BW_Switch[i].Register,
+						MT76x0_RF_BW_Switch[i].Value,
+						MT76x0_RF_BW_Switch[i].Bank);
+		}
+		else if ((BBPCurrentBW == (MT76x0_RF_BW_Switch[i].BwBand & 0xFF)) &&
+				 (RfBand & MT76x0_RF_BW_Switch[i].BwBand))
+		{
+			rt2800_MT7630_rfcsr_write(rt2x00dev, 
+						MT76x0_RF_BW_Switch[i].Register,
+						MT76x0_RF_BW_Switch[i].Value,
+						MT76x0_RF_BW_Switch[i].Bank);
+		}
+	}
+
+	for(i = 0; i < MT76x0_RF_Band_Switch_Size; i++)
+	{
+		if (MT76x0_RF_Band_Switch[i].BwBand & RfBand)
+		{
+			rt2800_MT7630_rfcsr_write(rt2x00dev, 
+						MT76x0_RF_Band_Switch[i].Register,
+						MT76x0_RF_Band_Switch[i].Value,
+						MT76x0_RF_Band_Switch[i].Bank);
+		}
+	}
+	//woody
+
+	rt2800_register_read(rt2x00dev, RF_MISC, &MacReg);
+	MacReg &= ~(0xC); /* Clear 0x518[3:2] */
+	rt2800_register_write(rt2x00dev, RF_MISC, MacReg);
+
+
+		/* Internal PA */
+	for(i = 0; sizeof(MT76x0_RF_INT_PA_RegTb) && i < MT76x0_RF_INT_PA_RegTb_Size; i++)
+	{
+			if (MT76x0_RF_INT_PA_RegTb[i].BwBand & RfBand)
+			{
+				rt2800_MT7630_rfcsr_write(rt2x00dev, 
+							MT76x0_RF_INT_PA_RegTb[i].Register,
+							MT76x0_RF_INT_PA_RegTb[i].Value,
+							MT76x0_RF_INT_PA_RegTb[i].Bank);
+
+				printk("%s: INT_PA_RegTb - B%d.R%02d = 0x%02x\n", 
+							__FUNCTION__, 
+							MT76x0_RF_INT_PA_RegTb[i].Register,
+							MT76x0_RF_INT_PA_RegTb[i].Value,
+							MT76x0_RF_INT_PA_RegTb[i].Bank);
+			}
+	}
+
+
+	rt2800_register_write(rt2x00dev, TX0_RF_GAIN_ATTEN, 0x63677400);
+		rt2800_register_read(rt2x00dev, TX_ALC_CFG_1, &MacReg);
+		MacReg &= 0x896400FF;
+		rt2800_register_write(rt2x00dev, TX_ALC_CFG_1, MacReg); 
+
+	rt2800_MT7630_rfcsr_read(rt2x00dev, RF_R04, &RFValue, RF_BANK0);
+	RFValue = ((RFValue & ~0x80) | 0x80); 
+	rt2800_MT7630_rfcsr_write(rt2x00dev, RF_R04, RFValue,RF_BANK0);
+
+	
+	for (Index = 0; Index < MT76x0_BPP_SWITCH_Tab_Size; Index++)
+	{
+		if (((rf_phy_mode | rf_bw) & MT76x0_BPP_SWITCH_Tab[Index].BwBand) == (rf_phy_mode | rf_bw))
+		{
+
+			{
+				rt2800_MT7630_bbp_write(rt2x00dev, MT76x0_BPP_SWITCH_Tab[Index].RegDate.Register,
+							MT76x0_BPP_SWITCH_Tab[Index].RegDate.Value);
+			}
+		}
+	}
+#if 0
+	if (rt2x00dev->connected ==1 && rt2x00dev->connect_channel==rt2x00dev->CommonCfg.CentralChannel)
+		MT76x0_Calibration(rt2x00dev, rt2x00dev->CommonCfg.CentralChannel , FALSE, TRUE, TRUE);
+	else
+		MT76x0_Calibration(rt2x00dev, rt2x00dev->CommonCfg.CentralChannel , FALSE, FALSE, FALSE);
+#endif
+	RTMPusecDelay(1000);
+	rt2800_register_read(rt2x00dev, MAC_SYS_CTRL, &Value);
+
+	rt2800_register_read(rt2x00dev, TX_ALC_CFG_0, &Value);
+	Value = Value & (~0x3F3F);
+	Value |= TxPwer;
+	Value |= (0x2F << 16);
+	Value |= (0x2F << 24);
+	rt2800_register_write(rt2x00dev, TX_ALC_CFG_0, Value);
+	
+}
+
+
+typedef	union _WPDMA_GLO_CFG_STRUC	{
+	struct {
+		u32 EnableTxDMA:1;
+		u32 TxDMABusy:1;
+		u32 EnableRxDMA:1;
+		u32 RxDMABusy:1;
+		u32 WPDMABurstSIZE:2;
+		u32 EnTXWriteBackDDONE:1;
+		u32 BigEndian:1;
+		u32 HDR_SEG_LEN:8;
+		u32 rsv:14;
+		u32 clk_gate_dis:1;
+		u32 rx_2b_offset:1;
+	} field;
+	u32 word;
+} WPDMA_GLO_CFG_STRUC, *PWPDMA_GLO_CFG_STRUC;
+
+int AsicWaitPDMAIdle(struct rt2x00_dev *rt2x00dev, int round, int wait_us)
+{
+	int i = 0;
+	WPDMA_GLO_CFG_STRUC GloCfg;
+
+
+	do {
+		rt2800_register_read(rt2x00dev, WPDMA_GLO_CFG, &GloCfg.word);
+		if ((GloCfg.field.TxDMABusy == 0)  && (GloCfg.field.RxDMABusy == 0)) {
+			printk("==>  DMAIdle, GloCfg=0x%x\n", GloCfg.word);
+			return 0;
+		}
+
+		udelay(wait_us);
+	}while ((i++) < round);
+
+	printk("==>  DMABusy, GloCfg=0x%x\n", GloCfg.word);
+	
+	return 1;
+}
+
+void RT28XXDMAEnable(struct rt2x00_dev *rt2x00dev)
+{
+	WPDMA_GLO_CFG_STRUC GloCfg;
+
+	rt2800_register_write(rt2x00dev, MAC_SYS_CTRL, 0x4);
+	AsicWaitPDMAIdle(rt2x00dev, 200, 1000);
+
+	udelay(100);
+	
+	rt2800_register_read(rt2x00dev, WPDMA_GLO_CFG, &GloCfg.word);
+	GloCfg.field.EnTXWriteBackDDONE = 1;
+	GloCfg.field.WPDMABurstSIZE = 3;
+	GloCfg.field.EnableRxDMA = 1;
+	GloCfg.field.EnableTxDMA = 1;
+	
+	rt2800_register_write(rt2x00dev, WPDMA_GLO_CFG, GloCfg.word);
+	printk("<== WRITE DMA offset 0x208 = 0x%x\n", GloCfg.word);	
+}
+
+void RTMPEnableRxTx(struct rt2x00_dev *rt2x00dev)
+{
+
+	u32 rx_filter_flag;
+
+	printk("==> RTMPEnableRxTx\n");
+
+	RT28XXDMAEnable(rt2x00dev);
+
+	/* enable RX of MAC block*/
+	rx_filter_flag = 0x17f97;     /* Staion not drop control frame will fail WiFi Certification.*/
+	rt2800_register_write(rt2x00dev, RX_FILTER_CFG, rx_filter_flag);
+
+	
+	{
+		rt2800_register_write(rt2x00dev, MAC_SYS_CTRL, 0xc);
+	}
+
+	printk("<== RTMPEnableRxTx\n");	
+}
+
 static char rt2800_txpower_to_dev(struct rt2x00_dev *rt2x00dev,
 				  unsigned int channel,
 				  char txpower)
@@ -3130,6 +4973,48 @@ static void rt2800_config_channel(struct rt2x00_dev *rt2x00dev,
 	u32 reg;
 	unsigned int tx_pin;
 	u8 bbp, rfcsr;
+	if (rt2x00_rt(rt2x00dev, MT7630))
+	{
+		//printk("&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&\n");
+		//printk("===>rt2800_config_channel channel=%d\n",rf->channel);
+		rt2x00dev->CommonCfg.CentralChannel=rf->channel;
+		
+		if (conf_is_ht40(conf))
+			rtmp_bbp_set_bw(rt2x00dev, BW_40);
+		else
+			rtmp_bbp_set_bw(rt2x00dev, BW_20);
+
+		if (conf_is_ht40(conf))
+		{
+			if (conf_is_ht40_minus(conf))
+			{
+					rtmp_bbp_set_ctrlch(rt2x00dev,EXTCHA_BELOW);
+					rtmp_mac_set_ctrlch(rt2x00dev, EXTCHA_BELOW);
+					if (rt2x00dev->CommonCfg.CentralChannel == 13)
+						rt2x00dev->CommonCfg.Channel = rt2x00dev->CommonCfg.CentralChannel + 1;
+					else
+						rt2x00dev->CommonCfg.Channel = rt2x00dev->CommonCfg.CentralChannel + 2;
+					vend_dbg("BW=40 EXTCHA_BELOW CentralChannel=%d\n",rt2x00dev->CommonCfg.CentralChannel);
+			}
+			else
+			{
+					rtmp_bbp_set_ctrlch(rt2x00dev,EXTCHA_ABOVE);
+					rtmp_mac_set_ctrlch(rt2x00dev, EXTCHA_ABOVE);
+					rt2x00dev->CommonCfg.Channel = rt2x00dev->CommonCfg.CentralChannel - 2;
+					vend_dbg("BW=40 EXTCHA_ABOVE CentralChannel=%d\n",rt2x00dev->CommonCfg.CentralChannel);
+					//printk("BW=40 EXTCHA_ABOVE\n");
+			}
+			rt2x00dev->CommonCfg.BBPCurrentBW=BW_40;
+		}
+		else
+		{
+					rtmp_bbp_set_ctrlch(rt2x00dev,EXTCHA_NONE);
+					rtmp_mac_set_ctrlch(rt2x00dev, EXTCHA_NONE);
+					rt2x00dev->CommonCfg.BBPCurrentBW=BW_20;
+					rt2x00dev->CommonCfg.Channel = rt2x00dev->CommonCfg.CentralChannel;
+					vend_dbg("BW=20 EXTCHA_NONE\n");
+		}
+	}
 
 	info->default_power1 = rt2800_txpower_to_dev(rt2x00dev, rf->channel,
 						     info->default_power1);
@@ -3172,6 +5057,9 @@ static void rt2800_config_channel(struct rt2x00_dev *rt2x00dev,
 	case RF5592:
 		rt2800_config_channel_rf55xx(rt2x00dev, conf, rf, info);
 		break;
+	case RF7630:
+		rt2800_config_channel_rf7630(rt2x00dev, conf, rf, info);
+		break;		
 	default:
 		rt2800_config_channel_rf2xxx(rt2x00dev, conf, rf, info);
 	}
@@ -3260,7 +5148,8 @@ static void rt2800_config_channel(struct rt2x00_dev *rt2x00dev,
 		else
 			rt2800_bbp_write(rt2x00dev, 75, 0x50);
 	}
-
+	if (!rt2x00_rt(rt2x00dev, MT7630))
+	{
 	rt2800_register_read(rt2x00dev, TX_BAND_CFG, &reg);
 	rt2x00_set_field32(&reg, TX_BAND_CFG_HT40_MINUS, conf_is_ht40_minus(conf));
 	rt2x00_set_field32(&reg, TX_BAND_CFG_A, rf->channel > 14);
@@ -3321,6 +5210,7 @@ static void rt2800_config_channel(struct rt2x00_dev *rt2x00dev,
 	rt2x00_set_field32(&tx_pin, TX_PIN_CFG_TRSW_EN, 1);
 
 	rt2800_register_write(rt2x00dev, TX_PIN_CFG, tx_pin);
+	}
 
 	if (rt2x00_rt(rt2x00dev, RT3572)) {
 		rt2800_rfcsr_write(rt2x00dev, 8, 0x80);
@@ -3387,15 +5277,18 @@ static void rt2800_config_channel(struct rt2x00_dev *rt2x00dev,
 
 		rt2800_iq_calibrate(rt2x00dev, rf->channel);
 	}
+	if (rt2x00_rt(rt2x00dev, MT7630))
+	{
+		;		
+	} else {
+		rt2800_bbp_read(rt2x00dev, 4, &bbp);
+		rt2x00_set_field8(&bbp, BBP4_BANDWIDTH, 2 * conf_is_ht40(conf));
+		rt2800_bbp_write(rt2x00dev, 4, bbp);
 
-	rt2800_bbp_read(rt2x00dev, 4, &bbp);
-	rt2x00_set_field8(&bbp, BBP4_BANDWIDTH, 2 * conf_is_ht40(conf));
-	rt2800_bbp_write(rt2x00dev, 4, bbp);
-
-	rt2800_bbp_read(rt2x00dev, 3, &bbp);
-	rt2x00_set_field8(&bbp, BBP3_HT40_MINUS, conf_is_ht40_minus(conf));
-	rt2800_bbp_write(rt2x00dev, 3, bbp);
-
+		rt2800_bbp_read(rt2x00dev, 3, &bbp);
+		rt2x00_set_field8(&bbp, BBP3_HT40_MINUS, conf_is_ht40_minus(conf));
+		rt2800_bbp_write(rt2x00dev, 3, bbp);
+	}
 	if (rt2x00_rt_rev(rt2x00dev, RT2860, REV_RT2860C)) {
 		if (conf_is_ht40(conf)) {
 			rt2800_bbp_write(rt2x00dev, 69, 0x1a);
@@ -4275,6 +6168,18 @@ void rt2800_vco_calibration(struct rt2x00_dev *rt2x00dev)
 	u32	tx_pin;
 	u8	rfcsr;
 
+	//printk("===>%s:MT7630\n", __FUNCTION__);
+	if (rt2x00_rt(rt2x00dev, MT7630))
+	{
+		u32 reg;
+		return;
+		reg=0;
+		rt2800_register_read(rt2x00dev, 0x0208, &reg);
+		printk(" rt2800_vco_calibration 0x0208 = 0x%x\n",reg);
+
+		//MT76x0_VCO_CalibrationMode3(rt2x00dev);
+		
+	}
 	/*
 	 * A voltage-controlled oscillator(VCO) is an electronic oscillator
 	 * designed to be controlled in oscillation frequency by a voltage
@@ -4434,7 +6339,8 @@ EXPORT_SYMBOL_GPL(rt2800_link_stats);
 static u8 rt2800_get_default_vgc(struct rt2x00_dev *rt2x00dev)
 {
 	u8 vgc;
-
+	if (rt2x00_rt(rt2x00dev, MT7630))
+		return 0;
 	if (rt2x00dev->curr_band == IEEE80211_BAND_2GHZ) {
 		if (rt2x00_rt(rt2x00dev, RT3070) ||
 		    rt2x00_rt(rt2x00dev, RT3071) ||
@@ -4468,6 +6374,8 @@ static u8 rt2800_get_default_vgc(struct rt2x00_dev *rt2x00dev)
 static inline void rt2800_set_vgc(struct rt2x00_dev *rt2x00dev,
 				  struct link_qual *qual, u8 vgc_level)
 {
+	if (rt2x00_rt(rt2x00dev, MT7630))
+		return;
 	if (qual->vgc_level != vgc_level) {
 		if (rt2x00_rt(rt2x00dev, RT3572) ||
 		    rt2x00_rt(rt2x00dev, RT3593)) {
@@ -4495,6 +6403,12 @@ void rt2800_link_tuner(struct rt2x00_dev *rt2x00dev, struct link_qual *qual,
 		       const u32 count)
 {
 	u8 vgc;
+
+	if (rt2x00_rt(rt2x00dev, MT7630))
+	{
+		NICUpdateRawCounters(rt2x00dev);		
+		return;
+	}
 
 	if (rt2x00_rt_rev(rt2x00dev, RT2860, REV_RT2860C))
 		return;
@@ -4543,16 +6457,38 @@ static int rt2800_init_registers(struct rt2x00_dev *rt2x00dev)
 	int ret;
 
 	rt2800_disable_wpdma(rt2x00dev);
+	if (rt2x00_rt(rt2x00dev, MT7630))
+		rt2800_register_write(rt2x00dev, 0x0244, 0x18000000);
 
 	ret = rt2800_drv_init_registers(rt2x00dev);
 	if (ret)
 		return ret;
+
+	/* Reg setup deleted from mainline, is this needed? */
+	if (rt2x00_rt(rt2x00dev, MT7630))
+	{
+		rt2800_register_read(rt2x00dev, BCN_OFFSET0_7630, &reg);
+		rt2x00_set_field32(&reg, BCN_OFFSET0_BCN0, 0xe0); /* 0x3800 */
+		rt2x00_set_field32(&reg, BCN_OFFSET0_BCN1, 0xe8); /* 0x3a00 */
+		rt2x00_set_field32(&reg, BCN_OFFSET0_BCN2, 0xf0); /* 0x3c00 */
+		rt2x00_set_field32(&reg, BCN_OFFSET0_BCN3, 0xf8); /* 0x3e00 */
+		rt2800_register_write(rt2x00dev, BCN_OFFSET0_7630, reg);
+
+		rt2800_register_read(rt2x00dev, BCN_OFFSET1_7630, &reg);
+		rt2x00_set_field32(&reg, BCN_OFFSET1_BCN4, 0xc8); /* 0x3200 */
+		rt2x00_set_field32(&reg, BCN_OFFSET1_BCN5, 0xd0); /* 0x3400 */
+		rt2x00_set_field32(&reg, BCN_OFFSET1_BCN6, 0x77); /* 0x1dc0 */
+		rt2x00_set_field32(&reg, BCN_OFFSET1_BCN7, 0x6f); /* 0x1bc0 */
+		rt2800_register_write(rt2x00dev, BCN_OFFSET1_7630, reg);
+	}
 
 	rt2800_register_write(rt2x00dev, LEGACY_BASIC_RATE, 0x0000013f);
 	rt2800_register_write(rt2x00dev, HT_BASIC_RATE, 0x00008003);
 
 	rt2800_register_write(rt2x00dev, MAC_SYS_CTRL, 0x00000000);
 
+	if (!rt2x00_rt(rt2x00dev, MT7630))
+	{
 	rt2800_register_read(rt2x00dev, BCN_TIME_CFG, &reg);
 	rt2x00_set_field32(&reg, BCN_TIME_CFG_BEACON_INTERVAL, 1600);
 	rt2x00_set_field32(&reg, BCN_TIME_CFG_TSF_TICKING, 0);
@@ -4561,7 +6497,7 @@ static int rt2800_init_registers(struct rt2x00_dev *rt2x00dev)
 	rt2x00_set_field32(&reg, BCN_TIME_CFG_BEACON_GEN, 0);
 	rt2x00_set_field32(&reg, BCN_TIME_CFG_TX_TIME_COMPENSATE, 0);
 	rt2800_register_write(rt2x00dev, BCN_TIME_CFG, reg);
-
+	}
 	rt2800_config_filter(rt2x00dev, FIF_ALLMULTI);
 
 	rt2800_register_read(rt2x00dev, BKOFF_SLOT_CFG, &reg);
@@ -4692,12 +6628,23 @@ static int rt2800_init_registers(struct rt2x00_dev *rt2x00dev)
 	rt2x00_set_field32(&reg, TX_LINK_CFG_REMOTE_MFS, 0);
 	rt2800_register_write(rt2x00dev, TX_LINK_CFG, reg);
 
-	rt2800_register_read(rt2x00dev, TX_TIMEOUT_CFG, &reg);
-	rt2x00_set_field32(&reg, TX_TIMEOUT_CFG_MPDU_LIFETIME, 9);
-	rt2x00_set_field32(&reg, TX_TIMEOUT_CFG_RX_ACK_TIMEOUT, 32);
-	rt2x00_set_field32(&reg, TX_TIMEOUT_CFG_TX_OP_TIMEOUT, 10);
-	rt2800_register_write(rt2x00dev, TX_TIMEOUT_CFG, reg);
 
+	if (rt2x00_rt(rt2x00dev, MT7630))
+	{
+		rt2800_register_write(rt2x00dev, TX_TIMEOUT_CFG, 0x000a2090);
+	}
+	else {
+		rt2800_register_read(rt2x00dev, TX_TIMEOUT_CFG, &reg);
+		rt2x00_set_field32(&reg, TX_TIMEOUT_CFG_MPDU_LIFETIME, 9);
+		rt2x00_set_field32(&reg, TX_TIMEOUT_CFG_RX_ACK_TIMEOUT, 32);
+		rt2x00_set_field32(&reg, TX_TIMEOUT_CFG_TX_OP_TIMEOUT, 10);
+		rt2800_register_write(rt2x00dev, TX_TIMEOUT_CFG, reg);
+	}
+
+	if (rt2x00_rt(rt2x00dev, MT7630))
+	{
+		rt2800_register_read(rt2x00dev, MAX_LEN_CFG, &reg);
+	} else {	
 	rt2800_register_read(rt2x00dev, MAX_LEN_CFG, &reg);
 	rt2x00_set_field32(&reg, MAX_LEN_CFG_MAX_MPDU, AGGREGATION_SIZE);
 	if (rt2x00_rt_rev_gte(rt2x00dev, RT2872, REV_RT2872E) ||
@@ -4709,7 +6656,7 @@ static int rt2800_init_registers(struct rt2x00_dev *rt2x00dev)
 	rt2x00_set_field32(&reg, MAX_LEN_CFG_MIN_PSDU, 0);
 	rt2x00_set_field32(&reg, MAX_LEN_CFG_MIN_MPDU, 0);
 	rt2800_register_write(rt2x00dev, MAX_LEN_CFG, reg);
-
+	}
 	rt2800_register_read(rt2x00dev, LED_CFG, &reg);
 	rt2x00_set_field32(&reg, LED_CFG_ON_PERIOD, 70);
 	rt2x00_set_field32(&reg, LED_CFG_OFF_PERIOD, 30);
@@ -4720,7 +6667,14 @@ static int rt2800_init_registers(struct rt2x00_dev *rt2x00dev)
 	rt2x00_set_field32(&reg, LED_CFG_LED_POLAR, 1);
 	rt2800_register_write(rt2x00dev, LED_CFG, reg);
 
-	rt2800_register_write(rt2x00dev, PBF_MAX_PCNT, 0x1f3fbf9f);
+	if (rt2x00_rt(rt2x00dev, MT7630))
+	{
+		rt2800_register_write(rt2x00dev, TX_MAX_PCNT, 0x1fbf1f1f);
+		rt2800_register_write(rt2x00dev, RX_MAX_PCNT, 0x0000FE9f);//DEBUG
+		
+	}
+	else
+		rt2800_register_write(rt2x00dev, PBF_MAX_PCNT, 0x1f3fbf9f);
 
 	rt2800_register_read(rt2x00dev, TX_RTY_CFG, &reg);
 	rt2x00_set_field32(&reg, TX_RTY_CFG_SHORT_RTY_LIMIT, 15);
@@ -4766,7 +6720,8 @@ static int rt2800_init_registers(struct rt2x00_dev *rt2x00dev)
 	rt2x00_set_field32(&reg, OFDM_PROT_CFG_TX_OP_ALLOW_GF40, 0);
 	rt2x00_set_field32(&reg, OFDM_PROT_CFG_RTS_TH_EN, 1);
 	rt2800_register_write(rt2x00dev, OFDM_PROT_CFG, reg);
-
+	if (!rt2x00_rt(rt2x00dev, MT7630))
+	{
 	rt2800_register_read(rt2x00dev, MM20_PROT_CFG, &reg);
 	rt2x00_set_field32(&reg, MM20_PROT_CFG_PROTECT_RATE, 0x4004);
 	rt2x00_set_field32(&reg, MM20_PROT_CFG_PROTECT_CTRL, 0);
@@ -4792,7 +6747,7 @@ static int rt2800_init_registers(struct rt2x00_dev *rt2x00dev)
 	rt2x00_set_field32(&reg, MM40_PROT_CFG_TX_OP_ALLOW_GF40, 1);
 	rt2x00_set_field32(&reg, MM40_PROT_CFG_RTS_TH_EN, 0);
 	rt2800_register_write(rt2x00dev, MM40_PROT_CFG, reg);
-
+	}
 	rt2800_register_read(rt2x00dev, GF20_PROT_CFG, &reg);
 	rt2x00_set_field32(&reg, GF20_PROT_CFG_PROTECT_RATE, 0x4004);
 	rt2x00_set_field32(&reg, GF20_PROT_CFG_PROTECT_CTRL, 0);
@@ -4818,7 +6773,34 @@ static int rt2800_init_registers(struct rt2x00_dev *rt2x00dev)
 	rt2x00_set_field32(&reg, GF40_PROT_CFG_TX_OP_ALLOW_GF40, 1);
 	rt2x00_set_field32(&reg, GF40_PROT_CFG_RTS_TH_EN, 0);
 	rt2800_register_write(rt2x00dev, GF40_PROT_CFG, reg);
+	if (rt2x00_rt(rt2x00dev, MT7630))
+	{
+		rt2800_register_read(rt2x00dev, MM20_PROT_CFG, &reg);
+		rt2x00_set_field32(&reg, MM20_PROT_CFG_PROTECT_RATE, 0x4004);
+		rt2x00_set_field32(&reg, MM20_PROT_CFG_PROTECT_CTRL, 0);
+		rt2x00_set_field32(&reg, MM20_PROT_CFG_PROTECT_NAV_SHORT, 1);
+		rt2x00_set_field32(&reg, MM20_PROT_CFG_TX_OP_ALLOW_CCK, 1);
+		rt2x00_set_field32(&reg, MM20_PROT_CFG_TX_OP_ALLOW_OFDM, 1);
+		rt2x00_set_field32(&reg, MM20_PROT_CFG_TX_OP_ALLOW_MM20, 1);
+		rt2x00_set_field32(&reg, MM20_PROT_CFG_TX_OP_ALLOW_MM40, 0);
+		rt2x00_set_field32(&reg, MM20_PROT_CFG_TX_OP_ALLOW_GF20, 1);
+		rt2x00_set_field32(&reg, MM20_PROT_CFG_TX_OP_ALLOW_GF40, 0);
+		rt2x00_set_field32(&reg, MM20_PROT_CFG_RTS_TH_EN, 0);
+		rt2800_register_write(rt2x00dev, MM20_PROT_CFG, reg);
 
+		rt2800_register_read(rt2x00dev, MM40_PROT_CFG, &reg);
+		rt2x00_set_field32(&reg, MM40_PROT_CFG_PROTECT_RATE, 0x4084);
+		rt2x00_set_field32(&reg, MM40_PROT_CFG_PROTECT_CTRL, 0);
+		rt2x00_set_field32(&reg, MM40_PROT_CFG_PROTECT_NAV_SHORT, 1);
+		rt2x00_set_field32(&reg, MM40_PROT_CFG_TX_OP_ALLOW_CCK, 1);
+		rt2x00_set_field32(&reg, MM40_PROT_CFG_TX_OP_ALLOW_OFDM, 1);
+		rt2x00_set_field32(&reg, MM40_PROT_CFG_TX_OP_ALLOW_MM20, 1);
+		rt2x00_set_field32(&reg, MM40_PROT_CFG_TX_OP_ALLOW_MM40, 1);
+		rt2x00_set_field32(&reg, MM40_PROT_CFG_TX_OP_ALLOW_GF20, 1);
+		rt2x00_set_field32(&reg, MM40_PROT_CFG_TX_OP_ALLOW_GF40, 1);
+		rt2x00_set_field32(&reg, MM40_PROT_CFG_RTS_TH_EN, 0);
+		rt2800_register_write(rt2x00dev, MM40_PROT_CFG, reg);
+	}
 	if (rt2x00_is_usb(rt2x00dev)) {
 		rt2800_register_write(rt2x00dev, PBF_CFG, 0xf40006);
 
@@ -4839,6 +6821,11 @@ static int rt2800_init_registers(struct rt2x00_dev *rt2x00dev)
 	 * The legacy driver also sets TXOP_CTRL_CFG_RESERVED_TRUN_EN to 1
 	 * although it is reserved.
 	 */
+	if (rt2x00_rt(rt2x00dev, MT7630))
+	{
+		rt2800_register_write(rt2x00dev, TXOP_CTRL_CFG, 0x583f);
+
+	} else {
 	rt2800_register_read(rt2x00dev, TXOP_CTRL_CFG, &reg);
 	rt2x00_set_field32(&reg, TXOP_CTRL_CFG_TIMEOUT_TRUN_EN, 1);
 	rt2x00_set_field32(&reg, TXOP_CTRL_CFG_AC_TRUN_EN, 1);
@@ -4851,17 +6838,22 @@ static int rt2800_init_registers(struct rt2x00_dev *rt2x00dev)
 	rt2x00_set_field32(&reg, TXOP_CTRL_CFG_EXT_CCA_DLY, 88);
 	rt2x00_set_field32(&reg, TXOP_CTRL_CFG_EXT_CWMIN, 0);
 	rt2800_register_write(rt2x00dev, TXOP_CTRL_CFG, reg);
-
+	}
 	reg = rt2x00_rt(rt2x00dev, RT5592) ? 0x00000082 : 0x00000002;
 	rt2800_register_write(rt2x00dev, TXOP_HLDR_ET, reg);
 
+	if (rt2x00_rt(rt2x00dev, MT7630))
+	{
+		rt2800_register_write(rt2x00dev, TX_RTS_CFG, 0x00092b20);
+
+	} else {
 	rt2800_register_read(rt2x00dev, TX_RTS_CFG, &reg);
 	rt2x00_set_field32(&reg, TX_RTS_CFG_AUTO_RTS_RETRY_LIMIT, 32);
 	rt2x00_set_field32(&reg, TX_RTS_CFG_RTS_THRES,
 			   IEEE80211_MAX_RTS_THRESHOLD);
 	rt2x00_set_field32(&reg, TX_RTS_CFG_RTS_FBK_EN, 0);
 	rt2800_register_write(rt2x00dev, TX_RTS_CFG, reg);
-
+	}
 	rt2800_register_write(rt2x00dev, EXP_ACK_TIME, 0x002400ca);
 
 	/*
@@ -4878,38 +6870,70 @@ static int rt2800_init_registers(struct rt2x00_dev *rt2x00dev)
 	rt2x00_set_field32(&reg, XIFS_TIME_CFG_EIFS, 314);
 	rt2x00_set_field32(&reg, XIFS_TIME_CFG_BB_RXEND_ENABLE, 1);
 	rt2800_register_write(rt2x00dev, XIFS_TIME_CFG, reg);
-
-	rt2800_register_write(rt2x00dev, PWR_PIN_CFG, 0x00000003);
+	if (rt2x00_rt(rt2x00dev, MT7630))
+	{
+		rt2800_register_write(rt2x00dev, PWR_PIN_CFG, 0x00000000);
+		rt2800_register_write(rt2x00dev, WMM_AIFSN_CFG, 0x00002273);
+		rt2800_register_write(rt2x00dev, WMM_CWMIN_CFG, 0x00002344);
+		rt2800_register_write(rt2x00dev, WMM_CWMAX_CFG, 0x000034aa);
+	}
+	else
+		rt2800_register_write(rt2x00dev, PWR_PIN_CFG, 0x00000003);
 
 	/*
 	 * ASIC will keep garbage value after boot, clear encryption keys.
 	 */
-	for (i = 0; i < 4; i++)
-		rt2800_register_write(rt2x00dev,
-					 SHARED_KEY_MODE_ENTRY(i), 0);
+	 if (!rt2x00_rt(rt2x00dev, MT7630))
+	 {
+	 	for (i = 0; i < 4; i++)
+			AsicRemoveSharedKeyEntry(rt2x00dev, 0, i);
+#if 0
+		for (i = 0; i < 4; i++)
+			rt2800_register_write(rt2x00dev,
+						 SHARED_KEY_MODE_ENTRY(i), 0);
+#endif
+		for (i = 0; i < 256; i++) {
+			rt2800_config_wcid(rt2x00dev, NULL, i);
+			rt2800_delete_wcid_attr(rt2x00dev, i);
+			rt2800_register_write(rt2x00dev, MAC_IVEIV_ENTRY(i), 0);
+		}
+	 }
+	 else
+	 {
+		for (i = 0; i < 4; i++)
+			rt2800_register_write(rt2x00dev,
+						 SHARED_KEY_MODE_ENTRY_7630(i), 0);
 
-	for (i = 0; i < 256; i++) {
-		rt2800_config_wcid(rt2x00dev, NULL, i);
-		rt2800_delete_wcid_attr(rt2x00dev, i);
-		rt2800_register_write(rt2x00dev, MAC_IVEIV_ENTRY(i), 0);
-	}
+		for (i = 0; i < 256; i++) {
+			rt2800_config_wcid(rt2x00dev, NULL, i);
+			rt2800_delete_wcid_attr(rt2x00dev, i);
+			rt2800_register_write(rt2x00dev, MAC_IVEIV_ENTRY_7630(i), 0);
+		}
+	 }
 
 	/*
 	 * Clear all beacons
 	 */
+	if (!rt2x00_rt(rt2x00dev, MT7630))
+	{
 	for (i = 0; i < 8; i++)
 		rt2800_clear_beacon_register(rt2x00dev, i);
+	}
 
 	if (rt2x00_is_usb(rt2x00dev)) {
 		rt2800_register_read(rt2x00dev, US_CYC_CNT, &reg);
 		rt2x00_set_field32(&reg, US_CYC_CNT_CLOCK_CYCLE, 30);
 		rt2800_register_write(rt2x00dev, US_CYC_CNT, reg);
 	} else if (rt2x00_is_pcie(rt2x00dev)) {
-		rt2800_register_read(rt2x00dev, US_CYC_CNT, &reg);
-		rt2x00_set_field32(&reg, US_CYC_CNT_CLOCK_CYCLE, 125);
-		rt2800_register_write(rt2x00dev, US_CYC_CNT, reg);
+		if (!rt2x00_rt(rt2x00dev, MT7630))
+		{
+			rt2800_register_read(rt2x00dev, US_CYC_CNT, &reg);
+			rt2x00_set_field32(&reg, US_CYC_CNT_CLOCK_CYCLE, 125);
+			rt2800_register_write(rt2x00dev, US_CYC_CNT, reg);
+		}
 	}
-
+	if (!rt2x00_rt(rt2x00dev, MT7630))
+	{
 	rt2800_register_read(rt2x00dev, HT_FBK_CFG0, &reg);
 	rt2x00_set_field32(&reg, HT_FBK_CFG0_HTMCS0FBK, 0);
 	rt2x00_set_field32(&reg, HT_FBK_CFG0_HTMCS1FBK, 0);
@@ -4957,7 +6981,7 @@ static int rt2800_init_registers(struct rt2x00_dev *rt2x00dev)
 	rt2x00_set_field32(&reg, AMPDU_BA_WINSIZE_FORCE_WINSIZE_ENABLE, 0);
 	rt2x00_set_field32(&reg, AMPDU_BA_WINSIZE_FORCE_WINSIZE, 0);
 	rt2800_register_write(rt2x00dev, AMPDU_BA_WINSIZE, reg);
-
+	}
 	/*
 	 * We must clear the error counters.
 	 * These registers are cleared on read,
@@ -4973,6 +6997,7 @@ static int rt2800_init_registers(struct rt2x00_dev *rt2x00dev)
 	/*
 	 * Setup leadtime for pre tbtt interrupt to 6ms
 	 */
+	if (!rt2x00_rt(rt2x00dev, MT7630)) {
 	rt2800_register_read(rt2x00dev, INT_TIMER_CFG, &reg);
 	rt2x00_set_field32(&reg, INT_TIMER_CFG_PRE_TBTT_TIMER, 6 << 4);
 	rt2800_register_write(rt2x00dev, INT_TIMER_CFG, reg);
@@ -4987,9 +7012,78 @@ static int rt2800_init_registers(struct rt2x00_dev *rt2x00dev)
 	rt2x00_set_field32(&reg, CH_TIME_CFG_TX_BUSY, 1);
 	rt2x00_set_field32(&reg, CH_TIME_CFG_TMR_EN, 1);
 	rt2800_register_write(rt2x00dev, CH_TIME_CFG, reg);
+	}
 
+	reg=0;
+	rt2800_register_read(rt2x00dev, FCE_PSE_CTRL, &reg);
+	printk("reg FCE_PSE_CTRL =x%x\n",reg);
+
+	if (rt2x00_rt(rt2x00dev, MT7630))
+	{
+		rt2800_register_write(rt2x00dev, PBF_SYS_CTRL, 0x00080c00);
+		rt2800_register_write(rt2x00dev, PBF_CFG_7630, 0x77723c1f);
+		rt2800_register_write(rt2x00dev, FCE_PSE_CTRL, 0x00000001);
+		rt2800_register_write(rt2x00dev, AMPDU_MAX_LEN_20M1S, 0xBAA99887);
+		rt2800_register_write(rt2x00dev, TX_SW_CFG0, 0x00000600);
+		rt2800_register_write(rt2x00dev, TX_SW_CFG1, 0x00000000);
+		rt2800_register_write(rt2x00dev, TX_SW_CFG2, 0x00000000);
+		rt2800_register_write(rt2x00dev, 0xa44, 0x00000000);
+		rt2800_register_write(rt2x00dev, HEADER_TRANS_CTRL_REG, 0x00000000);
+		rt2800_register_write(rt2x00dev, TSO_CTRL, 0x00000000);
+		rt2800_register_write(rt2x00dev, BB_PA_MODE_CFG1, 0x00500055);
+		rt2800_register_write(rt2x00dev, RF_PA_MODE_CFG1, 0x00500055);
+		rt2800_register_write(rt2x00dev, TX_ALC_CFG_0, 0x2F2F000C);
+		rt2800_register_write(rt2x00dev, TX0_BB_GAIN_ATTEN, 0x00000000);
+		rt2800_register_write(rt2x00dev, TX0_RF_GAIN_CORR, 0x01010101);
+		rt2800_register_write(rt2x00dev, TX_PWR_CFG_0, 0x3A3A3A3A);
+		rt2800_register_write(rt2x00dev, TX_PWR_CFG_1, 0x3A3A3A3A);
+		rt2800_register_write(rt2x00dev, TX_PWR_CFG_2, 0x3A3A3A3A);
+		rt2800_register_write(rt2x00dev, TX_PWR_CFG_3, 0x3A3A3A3A);
+		rt2800_register_write(rt2x00dev, TX_PWR_CFG_4, 0x3A3A3A3A);
+		rt2800_register_write(rt2x00dev, TX_PWR_CFG_7, 0x3A3A3A3A);
+		rt2800_register_write(rt2x00dev, TX_PWR_CFG_8, 0x0000003A);
+		rt2800_register_write(rt2x00dev, TX_PWR_CFG_9, 0x0000003A);
+		rt2800_register_write(rt2x00dev, 0x150C, 0x00000002);
+		//rt2800_register_write(rt2x00dev, 0x1238, 0x001700C8);
+
+		rt2800_register_read(rt2x00dev, MAC_SYS_CTRL, &reg);
+		rt2x00_set_field32(&reg, MAC_SYS_CTRL_RESET_CSR, 0);
+		rt2x00_set_field32(&reg, MAC_SYS_CTRL_RESET_BBP, 0);
+		rt2800_register_write(rt2x00dev, MAC_SYS_CTRL, reg);
+
+		rt2800_register_read(rt2x00dev, EXT_CCA_CFG, &reg);
+		reg |= (0x0000F000);
+		rt2800_register_write(rt2x00dev, EXT_CCA_CFG, reg);
+
+		/* Init FCE */
+		rt2800_register_read(rt2x00dev, FCE_L2_STUFF, &reg);
+		reg &= ~(0x00000010);
+		rt2800_register_write(rt2x00dev, FCE_L2_STUFF, reg);
+	}	
 	return 0;
 }
+
+#if 0
+static int rt2800_wait_bbp_rf_MT7630_ready(struct rt2x00_dev *rt2x00dev)
+{
+	unsigned int i;
+	u32 reg;
+
+	for (i = 0; i < REGISTER_BUSY_COUNT; i++) {
+		rt2800_MT7630_bbp_read(rt2x00dev, CORE_R0, &reg);
+		printk("BBP version = %x\n", reg);
+		if (((reg == 0xffffffff) || (reg == 0x0)))
+			;
+		else
+			return 0;
+
+		RTMPusecDelay(REGISTER_BUSY_DELAY);
+	}
+
+	ERROR(rt2x00dev, "BBP/RF register access failed, aborting.\n");
+	return -EACCES;
+}
+#endif
 
 static int rt2800_wait_bbp_rf_ready(struct rt2x00_dev *rt2x00dev)
 {
@@ -5407,6 +7501,7 @@ static void rt2800_init_bbp_3572(struct rt2x00_dev *rt2x00dev)
 	rt2800_bbp_write(rt2x00dev, 65, 0x2c);
 	rt2800_bbp_write(rt2x00dev, 66, 0x38);
 
+
 	rt2800_bbp_write(rt2x00dev, 69, 0x12);
 	rt2800_bbp_write(rt2x00dev, 73, 0x10);
 
@@ -5635,6 +7730,21 @@ static void rt2800_init_bbp_5592(struct rt2x00_dev *rt2x00dev)
 		rt2800_bbp_write(rt2x00dev, 103, 0xc0);
 }
 
+int rlt_bbp_is_ready(struct rt2x00_dev *rt2x00dev)
+{
+	int idx = 0;
+	unsigned int val;
+
+	do
+	{
+		rt2800_MT7630_bbp_read(rt2x00dev, CORE_R0, &val);
+
+		printk("BBP version = %x\n", val);
+	} while ((++idx < 20) && ((val == 0xffffffff) || (val == 0x0)));
+
+	return (((val == 0xffffffff) || (val == 0x0)) ? 1 : 0);
+}
+
 static void rt2800_init_bbp(struct rt2x00_dev *rt2x00dev)
 {
 	unsigned int i;
@@ -5642,6 +7752,76 @@ static void rt2800_init_bbp(struct rt2x00_dev *rt2x00dev)
 	u8 reg_id;
 	u8 value;
 
+	u32 MACValue;
+	int Index=0;
+
+	if (rt2x00_rt(rt2x00dev, MT7630))
+	{
+			printk("%s(): Init BBP Registers MT7630\n", __FUNCTION__);
+			do
+			{
+				rt2800_register_read(rt2x00dev, MAC_STATUS_CFG, &MACValue);;
+
+				if ((MACValue & 0x03) == 0)	/* if BB.RF is stable*/
+					break;
+
+				printk("Check MAC_STATUS_CFG  = Busy = %x\n", MACValue);
+				RTMPusecDelay(1000);
+			} while (Index++ < 100);
+
+			rt2800_register_write(rt2x00dev, H2M_BBP_AGENT, 0);	/* initialize BBP R/W access agent*/
+			rt2800_register_write(rt2x00dev, H2M_MAILBOX_CSR, 0);
+			RTMPusecDelay(1000);
+
+			if (rlt_bbp_is_ready(rt2x00dev)==1)
+			{
+				printk("rt2800_wait_bbp_rf_MT7630_ready not ready\n");
+				return -EACCES;
+			}
+
+
+
+			printk("%s(): Init BBP Registers MT7630\n", __FUNCTION__);
+
+			for(i = 0; i < MT76x0_BBP_Init_Tab_Size; i++)
+			{
+				rt2800_MT7630_bbp_write(rt2x00dev, MT76x0_BBP_Init_Tab[i].Register,
+						MT76x0_BBP_Init_Tab[i].Value);
+			}
+
+			for (i = 0; i < MT76x0_BPP_SWITCH_Tab_Size; i++)
+			{
+				if (((RF_G_BAND | RF_BW_20) & MT76x0_BPP_SWITCH_Tab[i].BwBand) == (RF_G_BAND | RF_BW_20))
+				{
+					rt2800_MT7630_bbp_write(rt2x00dev, MT76x0_BPP_SWITCH_Tab[i].RegDate.Register,
+							MT76x0_BPP_SWITCH_Tab[i].RegDate.Value);
+				}
+			}
+
+			for(i = 0; i < MT76x0_DCOC_Tab_Size; i++)
+			{
+				rt2800_MT7630_bbp_write(rt2x00dev, MT76x0_DCOC_Tab[i].Register,
+						MT76x0_DCOC_Tab[i].Value);
+				//rt2800_MT7630_bbp_read(rt2x00dev, MT76x0_DCOC_Tab[i].Register, &tmp);
+			}
+
+			/* enlarge MAX_LEN_CFG*/
+			rt2800_register_read(rt2x00dev, MAX_LEN_CFG, &MACValue);
+			MACValue |= 0x3fff;
+			rt2800_register_write(rt2x00dev, MAX_LEN_CFG, MACValue);
+
+			/* Clear raw counters*/
+			rt2800_register_read(rt2x00dev, RX_STA_CNT0, &MACValue);
+			rt2800_register_read(rt2x00dev, RX_STA_CNT1, &MACValue);
+			rt2800_register_read(rt2x00dev, RX_STA_CNT2, &MACValue);
+			rt2800_register_read(rt2x00dev, TX_STA_CNT0, &MACValue);
+			rt2800_register_read(rt2x00dev, TX_STA_CNT1, &MACValue);
+			rt2800_register_read(rt2x00dev, TX_STA_CNT2, &MACValue);
+
+			rt2800_register_write(rt2x00dev, TXOP_CTRL_CFG, 0x583f);
+			printk("%s(): Init BBP Registers MT7630 complete\n", __FUNCTION__);
+
+	} else {
 	if (rt2800_is_305x_soc(rt2x00dev))
 		rt2800_init_bbp_305x_soc(rt2x00dev);
 
@@ -5689,6 +7869,7 @@ static void rt2800_init_bbp(struct rt2x00_dev *rt2x00dev)
 			value = rt2x00_get_field16(eeprom, EEPROM_BBP_VALUE);
 			rt2800_bbp_write(rt2x00dev, reg_id, value);
 		}
+	}
 	}
 }
 
@@ -6655,8 +8836,100 @@ static void rt2800_init_rfcsr_5592(struct rt2x00_dev *rt2x00dev)
 
 static void rt2800_init_rfcsr(struct rt2x00_dev *rt2x00dev)
 {
+	u32 IdReg;
+	u8 RFValue;
+	unsigned char BBPCurrentBW = BW_20;
+
 	if (rt2800_is_305x_soc(rt2x00dev)) {
 		rt2800_init_rfcsr_305x_soc(rt2x00dev);
+		return;
+	}
+
+	if (rt2x00_rt(rt2x00dev, MT7630))
+	{
+		printk("%s(): Init RF Registers MT7630\n", __FUNCTION__);
+		for(IdReg = 0; IdReg < MT76x0_RF_Central_RegTb_Size; IdReg++)
+		{
+			rt2800_MT7630_rfcsr_write(rt2x00dev,
+						MT76x0_RF_Central_RegTb[IdReg].Register,
+						MT76x0_RF_Central_RegTb[IdReg].Value,
+						MT76x0_RF_Central_RegTb[IdReg].Bank);
+		}
+
+		for(IdReg = 0; IdReg < MT76x0_RF_2G_Channel_0_RegTb_Size; IdReg++)
+		{
+			rt2800_MT7630_rfcsr_write(rt2x00dev,
+						MT76x0_RF_2G_Channel_0_RegTb[IdReg].Register,
+						MT76x0_RF_2G_Channel_0_RegTb[IdReg].Value,
+						MT76x0_RF_2G_Channel_0_RegTb[IdReg].Bank);
+		}
+
+		for(IdReg = 0; IdReg < MT76x0_RF_5G_Channel_0_RegTb_Size; IdReg++)
+		{
+			rt2800_MT7630_rfcsr_write(rt2x00dev,
+						MT76x0_RF_5G_Channel_0_RegTb[IdReg].Register,
+						MT76x0_RF_5G_Channel_0_RegTb[IdReg].Value,
+						MT76x0_RF_5G_Channel_0_RegTb[IdReg].Bank);
+		}
+
+		for(IdReg = 0; IdReg < MT76x0_RF_VGA_Channel_0_RegTb_Size; IdReg++)
+		{
+			rt2800_MT7630_rfcsr_write(rt2x00dev,
+						MT76x0_RF_VGA_Channel_0_RegTb[IdReg].Register,
+						MT76x0_RF_VGA_Channel_0_RegTb[IdReg].Value,
+						MT76x0_RF_VGA_Channel_0_RegTb[IdReg].Bank);
+		}
+
+		for(IdReg = 0; IdReg < MT76x0_RF_BW_Switch_Size; IdReg++)
+		{
+			if (BBPCurrentBW == MT76x0_RF_BW_Switch[IdReg].BwBand)
+			{
+				rt2800_MT7630_rfcsr_write(rt2x00dev,
+							MT76x0_RF_BW_Switch[IdReg].Register,
+							MT76x0_RF_BW_Switch[IdReg].Value,
+							MT76x0_RF_BW_Switch[IdReg].Bank);
+			}
+			else if ((BBPCurrentBW == (MT76x0_RF_BW_Switch[IdReg].BwBand & 0xFF)) &&
+					 (RF_G_BAND & MT76x0_RF_BW_Switch[IdReg].BwBand))
+			{
+				rt2800_MT7630_rfcsr_write(rt2x00dev,
+							MT76x0_RF_BW_Switch[IdReg].Register,
+							MT76x0_RF_BW_Switch[IdReg].Value,
+							MT76x0_RF_BW_Switch[IdReg].Bank);
+			}
+		}
+
+		for(IdReg = 0; IdReg < MT76x0_RF_Band_Switch_Size; IdReg++)
+		{
+			if (MT76x0_RF_Band_Switch[IdReg].BwBand & RF_G_BAND)
+			{
+				rt2800_MT7630_rfcsr_write(rt2x00dev,
+							MT76x0_RF_Band_Switch[IdReg].Register,
+							MT76x0_RF_Band_Switch[IdReg].Value,
+							MT76x0_RF_Band_Switch[IdReg].Bank);
+			}
+		}
+		//
+		RFValue = (u8)(rt2x00dev->freq_offset & 0xFF);
+		rt2800_MT7630_rfcsr_write(rt2x00dev,RF_R22, RFValue, RF_BANK0);
+		rt2800_MT7630_rfcsr_read(rt2x00dev, RF_R22, &RFValue, RF_BANK0);
+		printk("%s: B0.R22 = 0x%02x\n", __FUNCTION__, RFValue);
+#if 1
+		rt2800_MT7630_rfcsr_read(rt2x00dev,RF_R73, &RFValue,RF_BANK0);
+		RFValue |= 0x80;
+		rt2800_MT7630_rfcsr_write(rt2x00dev, RF_R73, RFValue, RF_BANK0);	
+		RFValue &= (~0x80);
+		rt2800_MT7630_rfcsr_write(rt2x00dev, RF_R73, RFValue, RF_BANK0);	
+		RFValue |= 0x80;
+		rt2800_MT7630_rfcsr_write(rt2x00dev, RF_R73, RFValue, RF_BANK0);
+#endif
+		/* 
+			vcocal_en (initiate VCO calibration (reset after completion)) - It should be at the end of RF configuration. 
+		*/
+		rt2800_MT7630_rfcsr_read(rt2x00dev, RF_R04, &RFValue, RF_BANK0);
+		RFValue = ((RFValue & ~0x80) | 0x80); 
+		rt2800_MT7630_rfcsr_write(rt2x00dev, RF_R04, RFValue, RF_BANK0);
+		printk("%s(): Init RF Registers MT7630 complete\n", __FUNCTION__);
 		return;
 	}
 
@@ -6693,17 +8966,386 @@ static void rt2800_init_rfcsr(struct rt2x00_dev *rt2x00dev)
 	}
 }
 
+static int rt2800lib_init_queues(struct rt2x00_dev *rt2x00dev)
+{
+	struct lib_queue_entry_priv_pci *entry_priv;
+	u32 i, offset;
+	int ret=0;
+
+	/*
+	 * Initialize registers.
+	 */
+	printk("==>rt2800lib_init_queues\n");
+	if (rt2x00_rt(rt2x00dev, MT7630))
+	{
+		for (i = 0 ; i < 4; i++)
+		{
+			offset = i * 0x10;
+
+			entry_priv = rt2x00dev->tx[i].entries[0].priv_data;
+			rt2800_register_write(rt2x00dev, TX_RING_BASE + offset, entry_priv->desc_dma);
+			rt2800_register_write(rt2x00dev, TX_RING_CNT + offset, rt2x00dev->tx[i].limit);
+			rt2800_register_write(rt2x00dev, TX_RING_CIDX + offset, 0);
+			printk("-->TX_RING: Base=0x%pad, Cnt=%d\n", &entry_priv->desc_dma,rt2x00dev->tx[i].limit);
+		}
+
+		offset = 4 * 0x10;
+		rt2800_register_write(rt2x00dev, TX_RING_BASE + offset, 0);
+		rt2800_register_write(rt2x00dev, TX_RING_CNT + offset, 0);
+		rt2800_register_write(rt2x00dev, TX_RING_CIDX + offset, 0);
+			
+		rt2800_register_write(rt2x00dev, TX_MGMT_BASE, 0);
+		rt2800_register_write(rt2x00dev, TX_MGMT_CNT, 0);
+		rt2800_register_write(rt2x00dev, TX_MGMT_CIDX, 0);
+		
+			
+		entry_priv = rt2x00dev->rx->entries[0].priv_data;
+		rt2800_register_write(rt2x00dev, RX_RING_BASE, entry_priv->desc_dma);
+		rt2800_register_write(rt2x00dev, RX_RING_CNT, rt2x00dev->rx[0].limit);
+		rt2800_register_write(rt2x00dev, RX_RING_CIDX, rt2x00dev->rx[0].limit - 1);
+		rt2800_register_write(rt2x00dev, RX_RING_CIDX + 0x10, rt2x00dev->rx[0].limit - 1);
+
+		printk("-->RX_RING: Base=0x%pad, Cnt=%d\n", &entry_priv->desc_dma,rt2x00dev->rx[0].limit);
+		//printk("InitTxRxRing\n");
+
+		AsicInitTxRxRing(rt2x00dev);
+		/*
+			Reset DMA Index
+		*/
+		rt2800_register_write(rt2x00dev, WPDMA_RST_IDX, 0xFFFFFFFF);
+	
+		ret = rt2800_wait_wpdma_ready(rt2x00dev);
+		if (ret != 0)
+			printk("DMA busy\n");
+		
+		rt2800_disable_wpdma(rt2x00dev);
+		rt2800_register_write(rt2x00dev, DELAY_INT_CFG, 0);
+
+	}
+	printk("<===rt2800lib_init_queues\n");
+	return 0;
+}
+
+typedef	union _MAC_DW0_STRUC {
+	struct {
+		u8 Byte0;
+		u8 Byte1;
+		u8 Byte2;
+		u8 Byte3;
+	} field;
+	u32 word;
+} MAC_DW0_STRUC;
+
+typedef	union _MAC_DW1_STRUC {
+	struct {
+		u8 Byte4;
+		u8 Byte5;
+		u8 U2MeMask;
+		u8 Rsvd1;
+	} field;
+	u32 word;
+}	MAC_DW1_STRUC;
+
+#if 0
+static void MT76x0_CalculateTxpower(
+	u8 bMinus,
+	u16 InputTxpower,
+	u16 DeltaTxpower,
+	u8 *pTxpower1,
+	u8 *pTxpower2)
+{
+	u8 t1, t2;
+	
+	if (bMinus == 0)
+	{
+		if (InputTxpower & 0x20)
+		{
+			t1 = (InputTxpower & 0x1F) - (DeltaTxpower);
+			t1 |= 0x20;
+			if (t1 > 0x3F)
+				t1 = 0x3F;
+		}
+		else
+		{
+			t1 = (InputTxpower & 0x1F) + (DeltaTxpower);
+			if (t1 > 0x1F)
+				t1 = 0x1F;
+		}
+
+		if (InputTxpower & 0x2000)
+		{
+			t2 = ((InputTxpower & 0x1F00) >> 8) - (DeltaTxpower);
+			t2 |= 0x20;
+			if (t2 > 0x3F)
+				t2 = 0x3F;
+		}
+		else
+		{
+			t2 = ((InputTxpower & 0x1F00) >> 8) + (DeltaTxpower);
+			if (t2 > 0x1F)
+				t2 = 0x1F;
+		}			
+	}
+	else
+	{
+		if (InputTxpower & 0x20)
+		{
+			t1 = (InputTxpower & 0x1F) + (DeltaTxpower);
+			t1 |= 0x20;
+			if (t1 > 0x3F)
+				t1 = 0x3F;
+		}
+		else
+		{
+			t1 = (InputTxpower & 0x1F) - (DeltaTxpower);
+			if (t1 > 0x1F)
+				t1 = 0x1F;
+		}
+
+		if (InputTxpower & 0x2000)
+		{
+			t2 = ((InputTxpower & 0x1F00) >> 8) + (DeltaTxpower);
+			t2 |= 0x20;
+			if (t2 > 0x3F)
+				t2 = 0x3F;
+		}
+		else
+		{
+			t2 = ((InputTxpower & 0x1F00) >> 8) - (DeltaTxpower);
+			if (t2 > 0x1F)
+				t2 = 0x1F;
+		}			
+	}
+	*pTxpower1 = t1;
+	*pTxpower2 = t2;
+}
+#endif
+
+#define PowerSafeCID		1
+#define PowerRadioOffCID	2
+#define PowerWakeCID		3
+#define CID0MASK		0x000000ff
+#define CID1MASK		0x0000ff00
+#define CID2MASK		0x00ff0000
+#define CID3MASK		0xff000000
+
+unsigned char AsicCheckCommanOk(struct rt2x00_dev *rt2x00dev, unsigned char Command)
+{
+	UINT32	CmdStatus = 0, CID = 0, i;
+	UINT32	ThisCIDMask = 0;
+	i = 0;
+	do
+	{
+		rt2800_register_read(rt2x00dev, H2M_MAILBOX_CID, &CID);
+		/* Find where the command is. Because this is randomly specified by firmware.*/
+		if ((CID & CID0MASK) == Command)
+		{
+			ThisCIDMask = CID0MASK;
+			break;
+		}
+		else if ((((CID & CID1MASK)>>8) & 0xff) == Command)
+		{
+			ThisCIDMask = CID1MASK;
+			break;
+		}
+		else if ((((CID & CID2MASK)>>16) & 0xff) == Command)
+		{
+			ThisCIDMask = CID2MASK;
+			break;
+		}
+		else if ((((CID & CID3MASK)>>24) & 0xff) == Command)
+		{
+			ThisCIDMask = CID3MASK;
+			break;
+		}
+
+		udelay(100);
+		i++;
+	}while (i < 200);
+
+	/* Get CommandStatus Value*/
+	rt2800_register_read(rt2x00dev, H2M_MAILBOX_STATUS, &CmdStatus);
+	
+	/* This command's status is at the same position as command. So AND command position's bitmask to read status.	*/
+	if (i < 200)
+	{
+		/* If Status is 1, the comamnd is success.*/
+		if (((CmdStatus & ThisCIDMask) == 0x1) || ((CmdStatus & ThisCIDMask) == 0x100) 
+			|| ((CmdStatus & ThisCIDMask) == 0x10000) || ((CmdStatus & ThisCIDMask) == 0x1000000))
+		{
+			printk("--> AsicCheckCommanOk CID = 0x%x, CmdStatus= 0x%x \n", CID, CmdStatus);
+			rt2800_register_write(rt2x00dev, H2M_MAILBOX_STATUS, 0xffffffff);
+			rt2800_register_write(rt2x00dev, H2M_MAILBOX_CID, 0xffffffff);
+			return 1;
+		}
+		printk("--> AsicCheckCommanFail1 CID = 0x%x, CmdStatus= 0x%x \n", CID, CmdStatus);
+	}
+	else
+	{
+		printk("--> AsicCheckCommanFail2 Timeout Command = %d, CmdStatus= 0x%x \n", Command, CmdStatus);
+	}
+	/* Clear Command and Status.*/
+	rt2800_register_write(rt2x00dev, H2M_MAILBOX_STATUS, 0xffffffff);
+	rt2800_register_write(rt2x00dev, H2M_MAILBOX_CID, 0xffffffff);
+	return 0;
+}
+
+int rtmp_bbp_set_rxpath(struct rt2x00_dev *rt2x00dev, int rxpath)
+{
+	UINT32 agc, agc_r0 = 0;
+
+	rt2800_register_read(rt2x00dev, AGC1_R0, &agc_r0);
+	agc = agc_r0 & (~0x18);
+	if(rxpath == 2)
+		agc |= (0x8);
+	else if(rxpath == 1)
+		agc |= (0x0);
+
+	if (agc != agc_r0)
+		rt2800_register_write(rt2x00dev, AGC1_R0, agc);
+
+	printk("%s(): rxpath=%d, Set AGC1_R0=0x%x, agc_r0=0x%x\n", __FUNCTION__, rxpath, agc, agc_r0);
+	return 0;
+}
+
+int rtmp_bbp_set_txdac(struct rt2x00_dev *rt2x00dev, int tx_dac)
+{
+	UINT32 txbe, txbe_r5 = 0;
+	
+	rt2800_register_read(rt2x00dev, TXBE_R5, &txbe_r5);
+	txbe = txbe_r5 & (~0x3);
+	switch (tx_dac)
+	{
+		case 2:
+			txbe |= 0x3;
+			break;
+		case 1:
+		case 0:
+		default:		
+			txbe &= (~0x3);
+			break;
+	}
+
+	if (txbe != txbe_r5)
+		rt2800_register_write(rt2x00dev, TXBE_R5, txbe);
+
+	printk("%s(): txdac=%d, Set txbe=0x%x, txbe_r5=0x%x\n", __FUNCTION__, tx_dac, txbe, txbe_r5);
+
+	return 0;
+}
+
 int rt2800_enable_radio(struct rt2x00_dev *rt2x00dev)
 {
 	u32 reg;
 	u16 word;
-
+	u8 *mac;
 	/*
 	 * Initialize MAC registers.
 	 */
-	if (unlikely(rt2800_wait_wpdma_ready(rt2x00dev) ||
-		     rt2800_init_registers(rt2x00dev)))
-		return -EIO;
+	printk("===>%s: \n", __FUNCTION__);
+	
+	
+	if (rt2x00_rt(rt2x00dev, MT7630))
+	{
+		if (unlikely(rt2800_wait_wpdma_ready(rt2x00dev) ||
+			     rt2800_init_registers(rt2x00dev) ||
+			     rt2800_init_bbp(rt2x00dev) 
+			     /*||rt2800_init_rfcsr(rt2x00dev)*/))
+			return -EIO;
+	} else {	 
+		if (unlikely(rt2800_wait_wpdma_ready(rt2x00dev) ||
+			     rt2800_init_registers(rt2x00dev)))
+			return -EIO;
+	}
+
+	if (rt2x00_rt(rt2x00dev, MT7630)) {
+		if (unlikely(rt2800lib_init_queues(rt2x00dev)))
+			return -EIO;
+
+		mac = rt2x00_eeprom_addr(rt2x00dev, EEPROM_MAC_ADDR_0);
+		printk("MAC %pM \n", mac);
+		COPY_MAC_ADDR(rt2x00dev->addr,mac);
+		{
+			u32 WlanFunCtrl = 0, CmbCtrl = 0, CoexCfg0 = 0, CoexCfg3 = 0;
+
+			rt2800_register_read(rt2x00dev, WLAN_FUN_CTRL, &WlanFunCtrl);
+			rt2800_register_read(rt2x00dev, CMB_CTRL, &CmbCtrl);
+			rt2800_register_read(rt2x00dev, 0x40, &CoexCfg0);
+			rt2800_register_read(rt2x00dev, COEXCFG3, &CoexCfg3);
+
+			CoexCfg0 &= ~BIT2;
+			CmbCtrl &= ~(BIT14 | BIT12);
+			WlanFunCtrl &= ~(BIT6 | BIT5);
+			CoexCfg3 &= ~(BIT5 | BIT4 | BIT3 | BIT2 | BIT1);
+
+
+			CmbCtrl |= BIT12; /* 0x20[12]=1 */
+			CoexCfg3 |= BIT3; /* 0x4C[3]=1 */
+			WlanFunCtrl |= BIT6; /* 0x80[6]=1 */
+			CmbCtrl |= (BIT14 | BIT11); /*for Rfkill*/
+			printk("%s -7630 Dual antenna mode\n", __FUNCTION__);
+
+	
+			rt2800_register_write(rt2x00dev, WLAN_FUN_CTRL, WlanFunCtrl);
+			rt2800_register_write(rt2x00dev, CMB_CTRL, CmbCtrl);
+			rt2800_register_write(rt2x00dev, 0x40, CoexCfg0);
+			rt2800_register_write(rt2x00dev, COEXCFG3, CoexCfg3);
+		}
+
+		{
+				
+				rt2800_register_write(rt2x00dev, TX_PWR_CFG_0, 0x00);	
+				rt2800_register_write(rt2x00dev, TX_PWR_CFG_1, 0x00);
+				rt2800_register_write(rt2x00dev, TX_PWR_CFG_2, 0x00);
+				rt2800_register_write(rt2x00dev, TX_PWR_CFG_3, 0x3c3c0000);
+				rt2800_register_write(rt2x00dev, TX_PWR_CFG_4, 0x3b000000);
+				rt2800_register_write(rt2x00dev, TX_PWR_CFG_8, 0x00000000);
+				rt2800_register_write(rt2x00dev, TX_PWR_CFG_7, 0x00000000);
+				rt2800_register_write(rt2x00dev, TX_PWR_CFG_9, 0x00000000);
+
+
+				if (rt2x00_rt(rt2x00dev, MT7630))
+				{
+					msleep(10);
+					rt2800_init_rfcsr(rt2x00dev);
+				}
+				
+				AsicCheckCommanOk(rt2x00dev, PowerRadioOffCID);
+				AsicCheckCommanOk(rt2x00dev, PowerWakeCID);
+
+				/* 3 VCO calibration */
+				{
+					unsigned char RFValue = 0;
+					/* 
+						vcocal_en (initiate VCO calibration (reset after completion)) - It should be at the end of RF configuration. 
+					*/
+					rt2800_MT7630_rfcsr_read(rt2x00dev,RF_R04, &RFValue, RF_BANK0);
+					RFValue = ((RFValue & ~0x80) | 0x80); 
+					rt2800_MT7630_rfcsr_write(rt2x00dev,RF_R04, RFValue,RF_BANK0);
+				}
+						
+				rtmp_bbp_set_rxpath(rt2x00dev, 1);
+				rtmp_bbp_set_txdac(rt2x00dev, 0);
+				rtmp_mac_set_ctrlch(rt2x00dev, EXTCHA_BELOW);
+				rtmp_bbp_set_bw(rt2x00dev, BW_20);
+
+
+				rt2800_register_write(rt2x00dev, EDCA_AC0_CFG, 0x64300);
+				rt2800_register_write(rt2x00dev, EDCA_AC1_CFG, 0xa4700);
+				rt2800_register_write(rt2x00dev, EDCA_AC2_CFG, 0x43238);
+				rt2800_register_write(rt2x00dev, EDCA_AC3_CFG, 0x3212f);
+
+				rt2800_register_write(rt2x00dev, WMM_TXOP0_CFG, 0x0);
+				rt2800_register_write(rt2x00dev, WMM_TXOP1_CFG, 0x2f0038);
+
+				rt2800_register_write(rt2x00dev, WMM_CWMIN_CFG, 0x1344);
+				rt2800_register_write(rt2x00dev, WMM_CWMAX_CFG, 0x34a6);
+				rt2800_register_write(rt2x00dev, WMM_AIFSN_CFG, 0x273);
+
+				
+		}
+
+	}
 
 	/*
 	 * Wait BBP/RF to wake up.
@@ -6720,7 +9362,14 @@ int rt2800_enable_radio(struct rt2x00_dev *rt2x00dev)
 		rt2800_register_write(rt2x00dev, H2M_INT_SRC, 0);
 	rt2800_mcu_request(rt2x00dev, MCU_BOOT_SIGNAL, 0, 0, 0);
 	msleep(1);
+	if (rt2x00_rt(rt2x00dev, MT7630))
+	{
+		if (unlikely(rt2800_wait_wpdma_ready(rt2x00dev)))
+			return -EIO;
+	}
 
+	if (!rt2x00_rt(rt2x00dev, MT7630))
+	{
 	/*
 	 * Make sure BBP is up and running.
 	 */
@@ -6741,10 +9390,12 @@ int rt2800_enable_radio(struct rt2x00_dev *rt2x00dev)
 		rt2800_mcu_request(rt2x00dev, MCU_CURRENT, 0, 0, 0);
 		udelay(10);
 	}
-
+	}
 	/*
 	 * Enable RX.
 	 */
+	if (!rt2x00_rt(rt2x00dev, MT7630))
+	{
 	rt2800_register_read(rt2x00dev, MAC_SYS_CTRL, &reg);
 	rt2x00_set_field32(&reg, MAC_SYS_CTRL_ENABLE_TX, 1);
 	rt2x00_set_field32(&reg, MAC_SYS_CTRL_ENABLE_RX, 0);
@@ -6763,7 +9414,7 @@ int rt2800_enable_radio(struct rt2x00_dev *rt2x00dev)
 	rt2x00_set_field32(&reg, MAC_SYS_CTRL_ENABLE_TX, 1);
 	rt2x00_set_field32(&reg, MAC_SYS_CTRL_ENABLE_RX, 1);
 	rt2800_register_write(rt2x00dev, MAC_SYS_CTRL, reg);
-
+	}
 	/*
 	 * Initialize LED control
 	 */
@@ -6804,7 +9455,7 @@ int rt2800_efuse_detect(struct rt2x00_dev *rt2x00dev)
 	u32 reg;
 	u16 efuse_ctrl_reg;
 
-	if (rt2x00_rt(rt2x00dev, RT3290))
+	if (rt2x00_rt(rt2x00dev, RT3290) || rt2x00_rt(rt2x00dev, MT7630))
 		efuse_ctrl_reg = EFUSE_CTRL_3290;
 	else
 		efuse_ctrl_reg = EFUSE_CTRL;
@@ -6823,7 +9474,7 @@ static void rt2800_efuse_read(struct rt2x00_dev *rt2x00dev, unsigned int i)
 	u16 efuse_data2_reg;
 	u16 efuse_data3_reg;
 
-	if (rt2x00_rt(rt2x00dev, RT3290)) {
+	if (rt2x00_rt(rt2x00dev, RT3290)|| rt2x00_rt(rt2x00dev, MT7630)) {
 		efuse_ctrl_reg = EFUSE_CTRL_3290;
 		efuse_data0_reg = EFUSE_DATA0_3290;
 		efuse_data1_reg = EFUSE_DATA1_3290;
@@ -6923,6 +9574,7 @@ static int rt2800_validate_eeprom(struct rt2x00_dev *rt2x00dev)
 		rt2x00_eeprom_dbg(rt2x00dev, "MAC: %pM\n", mac);
 	}
 
+	printk("MAC: %pM\n", mac);
 	rt2800_eeprom_read(rt2x00dev, EEPROM_NIC_CONF0, &word);
 	if (word == 0xffff) {
 		rt2x00_set_field16(&word, EEPROM_NIC_CONF0_RXPATH, 2);
@@ -7044,6 +9696,7 @@ static int rt2800_validate_eeprom(struct rt2x00_dev *rt2x00dev)
 
 static int rt2800_init_eeprom(struct rt2x00_dev *rt2x00dev)
 {
+	u32 reg;
 	u16 value;
 	u16 eeprom;
 	u16 rf;
@@ -7058,12 +9711,23 @@ static int rt2800_init_eeprom(struct rt2x00_dev *rt2x00dev)
 	 * RT28xx/RT30xx: defined in "EEPROM_NIC_CONF0_RF_TYPE" field
 	 * RT53xx: defined in "EEPROM_CHIP_ID" field
 	 */
+
+	if (rt2x00_rt(rt2x00dev, RT3290) || rt2x00_rt(rt2x00dev, MT7630))
+		rt2800_register_read(rt2x00dev, MAC_CSR0_3290, &reg);
+	else
+		rt2800_register_read(rt2x00dev, MAC_CSR0, &reg);
+
+	printk("MAC_version=0x%x\n",reg);
+	
 	if (rt2x00_rt(rt2x00dev, RT3290) ||
 	    rt2x00_rt(rt2x00dev, RT5390) ||
+	    rt2x00_rt(rt2x00dev, MT7630) ||
 	    rt2x00_rt(rt2x00dev, RT5392))
 		rt2800_eeprom_read(rt2x00dev, EEPROM_CHIP_ID, &rf);
 	else
 		rf = rt2x00_get_field16(eeprom, EEPROM_NIC_CONF0_RF_TYPE);
+
+	printk("RFIC =0x%x\n",rf);
 
 	switch (rf) {
 	case RF2820:
@@ -7087,6 +9751,7 @@ static int rt2800_init_eeprom(struct rt2x00_dev *rt2x00dev)
 	case RF5390:
 	case RF5392:
 	case RF5592:
+	case RF7630:	
 		break;
 	default:
 		rt2x00_err(rt2x00dev, "Invalid RF chipset 0x%04x detected\n",
@@ -7541,6 +10206,7 @@ static int rt2800_probe_hw_mode(struct rt2x00_dev *rt2x00dev)
 	case RF5372:
 	case RF5390:
 	case RF5392:
+	case RF7630:
 		spec->num_channels = 14;
 		spec->channels = rf_vals_3x;
 		break;
@@ -7671,6 +10337,7 @@ static int rt2800_probe_hw_mode(struct rt2x00_dev *rt2x00dev)
 	case RF5372:
 	case RF5390:
 	case RF5392:
+	case RF7630:
 		__set_bit(CAPABILITY_VCO_RECALIBRATION, &rt2x00dev->cap_flags);
 		break;
 	}
@@ -7684,11 +10351,13 @@ static int rt2800_probe_rt(struct rt2x00_dev *rt2x00dev)
 	u32 rt;
 	u32 rev;
 
-	if (rt2x00_rt(rt2x00dev, RT3290))
+	if (rt2x00_rt(rt2x00dev, RT3290) || rt2x00_rt(rt2x00dev, MT7630))
 		rt2800_register_read(rt2x00dev, MAC_CSR0_3290, &reg);
 	else
 		rt2800_register_read(rt2x00dev, MAC_CSR0, &reg);
 
+	printk("MAC_version=0x%x\n",reg);
+	
 	rt = rt2x00_get_field32(reg, MAC_CSR0_CHIPSET);
 	rev = rt2x00_get_field32(reg, MAC_CSR0_REVISION);
 
@@ -7707,6 +10376,7 @@ static int rt2800_probe_rt(struct rt2x00_dev *rt2x00dev)
 	case RT5390:
 	case RT5392:
 	case RT5592:
+	case MT7630:	
 		break;
 	default:
 		rt2x00_err(rt2x00dev, "Invalid RT chipset 0x%04x, rev %04x detected\n",
@@ -7803,7 +10473,10 @@ void rt2800_get_key_seq(struct ieee80211_hw *hw,
 	if (key->cipher != WLAN_CIPHER_SUITE_TKIP)
 		return;
 
-	offset = MAC_IVEIV_ENTRY(key->hw_key_idx);
+ 	if (rt2x00_rt(rt2x00dev, MT7630))
+		offset = MAC_IVEIV_ENTRY_7630(key->hw_key_idx);
+	else
+		offset = MAC_IVEIV_ENTRY(key->hw_key_idx);
 	rt2800_register_multiread(rt2x00dev, offset,
 				      &iveiv_entry, sizeof(iveiv_entry));
 
@@ -8014,6 +10687,94 @@ int rt2800_get_survey(struct ieee80211_hw *hw, int idx,
 
 }
 EXPORT_SYMBOL_GPL(rt2800_get_survey);
+
+void mt7630_show_rf(struct rt2x00_dev *rt2x00dev)
+{
+		unsigned char regRF = 0;
+		int	rfId, maxRFIdx, bank_Id;
+		maxRFIdx = 127;
+		for (bank_Id = 0; bank_Id <= 4; bank_Id++)
+		{
+			if (rt2x00_rt(rt2x00dev, MT7630))
+			{
+				if ((bank_Id <=4) && (bank_Id >=1))
+					continue;
+			}
+			for (rfId = 0; rfId <= maxRFIdx; rfId++)
+			{
+				rt2800_MT7630_rfcsr_read(rt2x00dev,rfId, &regRF,bank_Id);
+				printk("%d %03d = %02X\n", bank_Id, rfId, regRF);
+			}
+		}
+}
+
+void mt7630_show_bbp(struct rt2x00_dev *rt2x00dev)
+{
+		static RTMP_REG_PAIR bbp_regs[]={
+			{CORE_R1,	CORE_R44},
+			{IBI_R0,		IBI_R11},
+			{AGC1_R0,	AGC1_R63},
+			{TXC_R1, 	TXC_R1},
+			{RXC_R1,	RXC_R4},
+			{TXO_R8,	TXO_R8},
+			{TXBE_R0,	TXBE_R17},
+			{RXFE_R0,	RXFE_R4},
+			{RXO_R13,	RXO_R28},
+		};
+		u32 reg, i;
+		u32 regBBP = 0;
+
+		for (i = 0; i < sizeof(bbp_regs) / sizeof(RTMP_REG_PAIR); i++)
+		{
+			for (reg = bbp_regs[i].Register; reg <= bbp_regs[i].Value; reg += 4)
+			{
+				rt2800_MT7630_bbp_read(rt2x00dev, reg, &regBBP);
+				printk("%04x = %08x\n", reg, regBBP); 
+			}
+		}
+}
+
+void AsicRemoveSharedKeyEntry(
+	struct rt2x00_dev *rt2x00dev,
+	unsigned char		 BssIndex,
+	unsigned char	 KeyIdx)
+{
+	/*ULONG SecCsr0;*/
+	SHAREDKEY_MODE_STRUC csr1;
+	UINT16 SharedKeyTableBase, SharedKeyModeBase;
+	
+	printk("AsicRemoveSharedKeyEntry: #%d \n", BssIndex*4 + KeyIdx);
+	{
+		SharedKeyTableBase = SHARED_KEY_TABLE_BASE_7630;
+		SharedKeyModeBase = SHARED_KEY_MODE_BASE_7630;
+	}
+
+	rt2800_register_read(rt2x00dev, SharedKeyTableBase+4*(BssIndex/2), &csr1.word);
+	if ((BssIndex%2) == 0)
+	{
+		if (KeyIdx == 0)
+			csr1.field.Bss0Key0CipherAlg = 0;
+		else if (KeyIdx == 1)
+			csr1.field.Bss0Key1CipherAlg = 0;
+		else if (KeyIdx == 2)
+			csr1.field.Bss0Key2CipherAlg = 0;
+		else
+			csr1.field.Bss0Key3CipherAlg = 0;
+	}
+	else
+	{
+		if (KeyIdx == 0)
+			csr1.field.Bss1Key0CipherAlg = 0;
+		else if (KeyIdx == 1)
+			csr1.field.Bss1Key1CipherAlg = 0;
+		else if (KeyIdx == 2)
+			csr1.field.Bss1Key2CipherAlg = 0;
+		else
+			csr1.field.Bss1Key3CipherAlg = 0;
+	}
+	printk("Write: SHARED_KEY_MODE_BASE at this Bss[%d] = 0x%x \n", BssIndex, csr1.word);
+	rt2800_register_write(rt2x00dev, SharedKeyModeBase+4*(BssIndex/2), csr1.word);
+}
 
 MODULE_AUTHOR(DRV_PROJECT ", Bartlomiej Zolnierkiewicz");
 MODULE_VERSION(DRV_VERSION);

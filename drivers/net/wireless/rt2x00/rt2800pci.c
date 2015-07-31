@@ -45,6 +45,31 @@
 #include "rt2800.h"
 #include "rt2800pci.h"
 
+void MT_2800pci_hex_dump(char *str, unsigned char *pSrcBufVA, u32 SrcBufLen);
+extern int AsicWaitPDMAIdle(struct rt2x00_dev *rt2x00dev, int round, int wait_us);
+extern void RTMPEnableRxTx(struct rt2x00_dev *rt2x00dev);
+
+#if 0
+static void rt2860_int_disable(struct rt2x00_dev *rt2x00dev, unsigned int mode)
+{
+	u32 regValue;
+
+	rt2x00dev->int_disable_mask |= mode;
+	regValue = 	rt2x00dev->int_enable_reg & ~(rt2x00dev->int_disable_mask);
+	rt2x00mmio_register_write(rt2x00dev, INT_MASK_CSR, regValue);     /* 0: disable */
+}
+
+static void rt2860_int_enable(struct rt2x00_dev *rt2x00dev, unsigned int mode)
+{
+	u32 regValue;
+
+	rt2x00dev->int_disable_mask &= ~(mode);
+	regValue = rt2x00dev->int_enable_reg & ~(rt2x00dev->int_disable_mask);
+	rt2x00mmio_register_write(rt2x00dev, INT_MASK_CSR, regValue);     /* 1:enable */
+
+}
+#endif
+
 /*
  * Allow hardware encryption to be disabled.
  */
@@ -61,6 +86,9 @@ static void rt2800pci_mcu_status(struct rt2x00_dev *rt2x00dev, const u8 token)
 {
 	unsigned int i;
 	u32 reg;
+
+	 if  (rt2x00_rt(rt2x00dev, MT7630))
+		return;
 
 	/*
 	 * SOC devices don't support MCU requests.
@@ -170,6 +198,8 @@ static char *rt2800pci_get_firmware_name(struct rt2x00_dev *rt2x00dev)
 	 */
 	if (rt2x00_rt(rt2x00dev, RT3290))
 		return FIRMWARE_RT3290;
+	else if (rt2x00_rt(rt2x00dev, MT7630))
+		return FIRMWARE_MT7630;
 	else
 		return FIRMWARE_RT2860;
 }
@@ -179,6 +209,126 @@ static int rt2800pci_write_firmware(struct rt2x00_dev *rt2x00dev,
 {
 	u32 reg;
 
+	if (rt2x00_rt(rt2x00dev, MT7630))
+	{
+
+		u32 Loop=0;
+
+		u32 ILMLen, DLMLen;
+		u16 FWVersion, BuildVersion;
+		u32 StartOffset, EndOffset, idx = 0, val = 0;
+		{
+loadfw_protect:
+			rt2x00mmio_register_read(rt2x00dev, 0x07B0, &reg);
+			Loop++;
+
+			if (((reg & 0x01) == 0) && (Loop < 10000))
+				goto loadfw_protect;
+		}
+
+		/* check MCU if ready */
+
+		rt2x00mmio_register_read(rt2x00dev, 0x0730, &reg);
+		if (reg == 0x01)
+		{
+			rt2x00dev->MCUCtrl.IsFWReady = TRUE;
+			goto done;
+		}
+
+	ILMLen = (*(data + 3) << 24) | (*(data + 2) << 16) |
+			 (*(data + 1) << 8) | *(data);
+
+	DLMLen = (*(data + 7) << 24) | (*(data + 6) << 16) |
+			 (*(data + 5) << 8) | (*(data + 4));
+
+	FWVersion = (*(data + 11) << 8) | (*(data + 10));
+
+	BuildVersion = (*(data + 9) << 8) | (*(data + 8));
+
+	printk("FW Version:%d.%d.%02d ", (FWVersion & 0xf000) >> 8,
+						(FWVersion & 0x0f00) >> 8, FWVersion & 0x00ff);
+	printk("Build:%x\n", BuildVersion);
+	printk("Build Time:");
+	for (Loop = 0; Loop < 16; Loop++)
+		printk("%c", *(data + 16 + Loop));
+
+	printk("\n");
+
+	printk("ILM Length = %d(bytes)\n", ILMLen);
+	printk("DLM Length = %d(bytes)\n", DLMLen);
+
+	rt2x00mmio_register_write(rt2x00dev, 0x074c, 0x0);
+	StartOffset = 96;
+	EndOffset = 32 + ILMLen;
+
+	/* Load ILM code */
+	for (idx = StartOffset; idx < EndOffset; idx += 4)
+	{
+		val = (*(data + idx)) +
+		   (*(data + idx +3) << 24) +
+		   (*(data + idx + 2) << 16) +
+		   (*(data + idx + 1) << 8);
+		rt2x00mmio_register_write(rt2x00dev, 0x80000 + (idx - 32), val);
+	}
+
+		/* Loading IVB part into last 64 bytes of ILM */
+		StartOffset = 32;
+		EndOffset = 96;
+
+		for (idx = StartOffset; idx < EndOffset; idx += 4)
+		{
+			val = (*(data + idx)) +
+				(*(data + idx + 3) << 24) +
+				(*(data + idx + 2) << 16) +
+				(*(data + idx + 1) << 8);
+			rt2x00mmio_register_write(rt2x00dev, 0x80000 + (0x54000 - 0x40) + (idx - 32), val);
+		}
+		rt2x00mmio_register_write(rt2x00dev, 0x074c, 0x80000);
+
+		StartOffset = 32 + ILMLen;
+		EndOffset = 32 + ILMLen + DLMLen;
+
+		/* Load DLM code */
+		for (idx = StartOffset; idx < EndOffset; idx += 4)
+		{
+			val = (*(data + idx)) +
+			   (*(data + idx + 3) << 24) +
+			   (*(data + idx + 2) << 16) +
+			   (*(data + idx + 1) << 8);
+			rt2x00mmio_register_write(rt2x00dev, 0x80000 + (idx - 32 - ILMLen), val);
+		}
+
+		rt2x00mmio_register_write(rt2x00dev, 0x074c, 0x0);
+		rt2x00mmio_register_write(rt2x00dev, 0x0718, 0x03);
+
+		/* check MCU if ready */
+		Loop = 0;
+		do
+		{
+			rt2x00mmio_register_read(rt2x00dev, 0x0730, &reg);
+			if (reg == 0x1)
+				break;
+			mdelay(10);
+			Loop++;
+		} while (Loop <= 20);
+
+		printk("%s: COM_REG0(0x%x) = 0x%x\n", __FUNCTION__, 0x0730, reg);
+
+		if (reg != 0x1)
+		{
+			rt2x00mmio_register_read(rt2x00dev, 0x0700, &reg);
+			printk("%s: 0x0700 = 0x%x\n", __FUNCTION__, val);
+
+			rt2x00mmio_register_read(rt2x00dev, 0x0704, &reg);
+			printk("%s: 0x%x = 0x%x\n", __FUNCTION__, 0x0704, val);
+		}
+		else
+			rt2x00dev->MCUCtrl.IsFWReady = TRUE;
+
+		rt2x00mmio_register_write(rt2x00dev, 0x07B0, 0x1);
+	}
+	else
+	{
 	/*
 	 * enable Host program ram write selection
 	 */
@@ -197,7 +347,8 @@ static int rt2800pci_write_firmware(struct rt2x00_dev *rt2x00dev,
 
 	rt2x00mmio_register_write(rt2x00dev, H2M_BBP_AGENT, 0);
 	rt2x00mmio_register_write(rt2x00dev, H2M_MAILBOX_CSR, 0);
-
+	}
+done:
 	return 0;
 }
 
@@ -211,11 +362,11 @@ static int rt2800pci_enable_radio(struct rt2x00_dev *rt2x00dev)
 	retval = rt2800mmio_enable_radio(rt2x00dev);
 	if (retval)
 		return retval;
-
+#if 0
 	/* After resume MCU_BOOT_SIGNAL will trash these. */
 	rt2x00mmio_register_write(rt2x00dev, H2M_MAILBOX_STATUS, ~0);
 	rt2x00mmio_register_write(rt2x00dev, H2M_MAILBOX_CID, ~0);
-
+#endif
 	rt2800_mcu_request(rt2x00dev, MCU_SLEEP, TOKEN_RADIO_OFF, 0xff, 0x02);
 	rt2800pci_mcu_status(rt2x00dev, TOKEN_RADIO_OFF);
 
@@ -342,6 +493,7 @@ static const struct rt2800_ops rt2800pci_rt2800_ops = {
 static const struct rt2x00lib_ops rt2800pci_rt2x00_ops = {
 	.irq_handler		= rt2800mmio_interrupt,
 	.txstatus_tasklet	= rt2800mmio_txstatus_tasklet,
+	.tx8damdone_tasklet	= rt2800mmio_tx8damdone_tasklet,
 	.pretbtt_tasklet	= rt2800mmio_pretbtt_tasklet,
 	.tbtt_tasklet		= rt2800mmio_tbtt_tasklet,
 	.rxdone_tasklet		= rt2800mmio_rxdone_tasklet,
@@ -401,6 +553,8 @@ static const struct rt2x00_ops rt2800pci_ops = {
  * RT2800pci module information.
  */
 static const struct pci_device_id rt2800pci_device_table[] = {
+	{ PCI_DEVICE(0x14c3, 0x7630) },
+	{ PCI_DEVICE(0x14c3, 0x7650) },
 	{ PCI_DEVICE(0x1814, 0x0601) },
 	{ PCI_DEVICE(0x1814, 0x0681) },
 	{ PCI_DEVICE(0x1814, 0x0701) },

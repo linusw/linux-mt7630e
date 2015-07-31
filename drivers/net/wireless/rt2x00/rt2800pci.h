@@ -37,6 +37,7 @@
  */
 #define FIRMWARE_RT2860			"rt2860.bin"
 #define FIRMWARE_RT3290			"rt3290.bin"
+#define FIRMWARE_MT7630			"MT7650E234.bin"
 #define FIRMWARE_IMAGE_BASE		0x2000
 
 #endif /* RT2800PCI_H */

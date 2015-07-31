@@ -226,4 +226,11 @@ int rt2800_get_survey(struct ieee80211_hw *hw, int idx,
 		      struct survey_info *survey);
 void rt2800_disable_wpdma(struct rt2x00_dev *rt2x00dev);
 
+void mt7630_show_rf(struct rt2x00_dev *rt2x00dev);
+void mt7630_show_bbp(struct rt2x00_dev *rt2x00dev);
+void MT76x0_WLAN_ChipOnOff(
+	struct rt2x00_dev *rt2x00dev,
+	int bOn,
+	int bResetWLAN);
+
 #endif /* RT2800LIB_H */

@@ -389,6 +389,7 @@ NDIS_STATUS	RTMPAllocTxRxRingMemory(struct rt2x00_dev *rt2x00dev)
 	printk("<-- RTMPAllocTxRxRingMemory, Status=%x\n", Status);
 	return Status;
 }
+EXPORT_SYMBOL_GPL(RTMPAllocTxRxRingMemory);
 
 NDIS_STATUS RTMPInitTxRxRingMemory(struct rt2x00_dev *rt2x00dev)
 {
@@ -436,9 +437,7 @@ NDIS_STATUS RTMPInitTxRxRingMemory(struct rt2x00_dev *rt2x00dev)
 	rt2x00dev->CtrlRing.TxSwFreeIdx = 0;
 	rt2x00dev->CtrlRing.TxCpuIdx = 0;
 
-		
 	return Status;
-
 }
 
 VOID AsicInitTxRxRing(struct rt2x00_dev *rt2x00dev)
@@ -446,8 +445,8 @@ VOID AsicInitTxRxRing(struct rt2x00_dev *rt2x00dev)
 	UINT32 addr;
 
 	/*
-		Write Tx Ring base address registers 
-		
+		Write Tx Ring base address registers
+
 		1. RT85592
 		The Tx Ring arrangement:
 		RingIdx	SwRingIdx	AsicPriority	WMM QID
@@ -465,7 +464,7 @@ VOID AsicInitTxRxRing(struct rt2x00_dev *rt2x00dev)
 		9		-			L			QID_AC_VO
 
 		Ring 0~3 for TxChannel 0
-			Ring 6~9 for TxChannel 1		
+			Ring 6~9 for TxChannel 1
 
 		2. MT7650
 			TxRing 0~3: for TxQ Channel 1 with AC_BK/BE/VI/VO
@@ -473,9 +472,6 @@ VOID AsicInitTxRxRing(struct rt2x00_dev *rt2x00dev)
 			TxRing 8    : for TxQ CTRL (In-band command)
 			TxRing 9    : for TxQ MGMT
 	*/
-
-	
-
 
 	/* init CTRL ring index pointer */
 	printk("AsicInitTxRxRing\n");
@@ -487,8 +483,8 @@ VOID AsicInitTxRxRing(struct rt2x00_dev *rt2x00dev)
 	RTMP_IO_WRITE32(rt2x00dev, TX_CTRL_CIDX,  rt2x00dev->CtrlRing.TxCpuIdx);
 	printk("-->TX_RING_CTRL: Base=0x%x, Cnt=%d!\n",
 					addr, MGMT_RING_SIZE);
-
 }
+EXPORT_SYMBOL_GPL(AsicInitTxRxRing);
 
 int	RTMPHandleTxRing8DmaDoneInterrupt(
 	IN struct rt2x00_dev *rt2x00dev)
@@ -542,6 +538,7 @@ int	RTMPHandleTxRing8DmaDoneInterrupt(
 
 	return 0;
 }
+EXPORT_SYMBOL_GPL(RTMPHandleTxRing8DmaDoneInterrupt);
 
 VOID RTMPFreeNdisPacket(
 	IN VOID *pReserved,
@@ -961,9 +958,7 @@ VOID TDDFDDExclusiveRequest(
         rt2x00dev->CoexMode.FDDRequest = FALSE;
         rt2x00dev->CoexMode.TDDRequest = FALSE;
     }
-    
 }
-
 
 VOID BtAFHCtl(
 		IN struct rt2x00_dev *rt2x00dev,
@@ -1031,16 +1026,17 @@ VOID BtAFHCtl(
 	}
 
 	printk("%s: COEX AFH Start Ch = %d, AFH End Ch = %d, Channel = %d, CentralChannel = %d\n",
-		__FUNCTION__, 
+		__FUNCTION__,
 		btFunInfo.field.AFH_START_CH,
 		btFunInfo.field.AFH_END_CH,
 		Channel,
 		CentralChannel);
-	
+
 	RTMP_IO_WRITE32(rt2x00dev, BT_FUN_INFO, btFunInfo.word);
 	// High BT Priority Mode
-	//RTMP_IO_WRITE32(pAd, 0x5c, 0x8000);		
+	//RTMP_IO_WRITE32(pAd, 0x5c, 0x8000);
 }
+EXPORT_SYMBOL_GPL(BtAFHCtl);
 
 VOID SendAndesCoexFrameInfo(
 	IN struct rt2x00_dev *rt2x00dev, 
@@ -1485,6 +1481,7 @@ void RTMPusecDelay(unsigned long usec)
 	if (usec % 50)
 		udelay(usec % 50);
 }
+EXPORT_SYMBOL_GPL(RTMPusecDelay);
 
 void MT7630_rfcsr_read(struct rt2x00_dev *rt2x00dev,
 			       const u8 word, u8 *value,const u8 bank)
@@ -1789,7 +1786,7 @@ VOID NICUpdateRawCounters(
 	}
 #endif /* STATS_COUNT_SUPPORT */			
 }
-
+EXPORT_SYMBOL_GPL(NICUpdateRawCounters);
 
 VOID SendLEDCmd(
 	struct rt2x00_dev *rt2x00dev,
@@ -2083,8 +2080,8 @@ VOID SendAndesAFH(
 	ret = AsicSendCmdToAndes(rt2x00dev, &CmdUnit);
 
 	printk("%s: <--\n", __FUNCTION__);
-	
 }
+EXPORT_SYMBOL_GPL(SendAndesAFH);
 
 void Set_BtDump_Proc(
 	IN 	struct rt2x00_dev *rt2x00dev,
@@ -2144,7 +2141,7 @@ void Set_BtDump_Proc(
 	RTMP_IO_WRITE32(rt2x00dev, PCIE_REMAP_BASE4, 0x00);
 	filp_close(file, NULL);
 }
-
+EXPORT_SYMBOL_GPL(Set_BtDump_Proc);
 
 VOID MLMEHook(
 	IN 	struct rt2x00_dev *rt2x00dev,
@@ -2175,6 +2172,8 @@ VOID MLMEHook(
     }
 
  }
+EXPORT_SYMBOL_GPL(MLMEHook);
+
 MODULE_AUTHOR(DRV_PROJECT);
 MODULE_VERSION(DRV_VERSION);
 MODULE_DESCRIPTION("rt2x00 7630 library");

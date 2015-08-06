@@ -4904,9 +4904,10 @@ int AsicWaitPDMAIdle(struct rt2x00_dev *rt2x00dev, int round, int wait_us)
 	}while ((i++) < round);
 
 	printk("==>  DMABusy, GloCfg=0x%x\n", GloCfg.word);
-	
+
 	return 1;
 }
+EXPORT_SYMBOL_GPL(AsicWaitPDMAIdle);
 
 void RT28XXDMAEnable(struct rt2x00_dev *rt2x00dev)
 {
@@ -4916,15 +4917,15 @@ void RT28XXDMAEnable(struct rt2x00_dev *rt2x00dev)
 	AsicWaitPDMAIdle(rt2x00dev, 200, 1000);
 
 	udelay(100);
-	
+
 	rt2800_register_read(rt2x00dev, WPDMA_GLO_CFG, &GloCfg.word);
 	GloCfg.field.EnTXWriteBackDDONE = 1;
 	GloCfg.field.WPDMABurstSIZE = 3;
 	GloCfg.field.EnableRxDMA = 1;
 	GloCfg.field.EnableTxDMA = 1;
-	
+
 	rt2800_register_write(rt2x00dev, WPDMA_GLO_CFG, GloCfg.word);
-	printk("<== WRITE DMA offset 0x208 = 0x%x\n", GloCfg.word);	
+	printk("<== WRITE DMA offset 0x208 = 0x%x\n", GloCfg.word);
 }
 
 void RTMPEnableRxTx(struct rt2x00_dev *rt2x00dev)
@@ -4940,13 +4941,13 @@ void RTMPEnableRxTx(struct rt2x00_dev *rt2x00dev)
 	rx_filter_flag = 0x17f97;     /* Staion not drop control frame will fail WiFi Certification.*/
 	rt2800_register_write(rt2x00dev, RX_FILTER_CFG, rx_filter_flag);
 
-	
 	{
 		rt2800_register_write(rt2x00dev, MAC_SYS_CTRL, 0xc);
 	}
 
-	printk("<== RTMPEnableRxTx\n");	
+	printk("<== RTMPEnableRxTx\n");
 }
+EXPORT_SYMBOL_GPL(RTMPEnableRxTx);
 
 static char rt2800_txpower_to_dev(struct rt2x00_dev *rt2x00dev,
 				  unsigned int channel,

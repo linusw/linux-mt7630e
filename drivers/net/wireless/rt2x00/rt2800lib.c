@@ -2901,6 +2901,7 @@ EXPORT_SYMBOL_GPL(rt2800_sta_add);
 int rt2800_sta_remove(struct rt2x00_dev *rt2x00dev, int wcid)
 {
 	struct rt2800_drv_data *drv_data = rt2x00dev->drv_data;
+	u32 reg;
 
 	if (wcid > WCID_END)
 		return 0;
@@ -2908,21 +2909,20 @@ int rt2800_sta_remove(struct rt2x00_dev *rt2x00dev, int wcid)
 	 * Remove WCID entry, no need to clean the attributes as they will
 	 * get renewed when the WCID is reused.
 	 */
-	 u32 reg;
-	 printk("===>%s:MT7630\n", __FUNCTION__);
+	printk("===>%s:MT7630\n", __FUNCTION__);
 	rt2800_config_wcid(rt2x00dev, NULL, wcid);
 	rt2x00dev->connected=0;
 	rt2x00dev->connect_channel=0;
 	Set_BtDump_Proc(rt2x00dev,1);
-	BtAFHCtl(rt2x00dev, rt2x00dev->CommonCfg.BBPCurrentBW, rt2x00dev->CommonCfg.Channel, rt2x00dev->CommonCfg.CentralChannel, TRUE);		
-      SendAndesAFH(rt2x00dev, rt2x00dev->CommonCfg.BBPCurrentBW,  rt2x00dev->CommonCfg.Channel, rt2x00dev->CommonCfg.CentralChannel, TRUE, 1);	
+	BtAFHCtl(rt2x00dev, rt2x00dev->CommonCfg.BBPCurrentBW, rt2x00dev->CommonCfg.Channel, rt2x00dev->CommonCfg.CentralChannel, TRUE);
+	SendAndesAFH(rt2x00dev, rt2x00dev->CommonCfg.BBPCurrentBW,  rt2x00dev->CommonCfg.Channel, rt2x00dev->CommonCfg.CentralChannel, TRUE, 1);
 	udelay(5000);
 	RTMP_IO_WRITE32(rt2x00dev, PCIE_REMAP_BASE4, 0x80000);
 	RTMP_IO_READ32(rt2x00dev, 0x100, &reg);
 	printk("===>%s:MT7630   0x80100 = 0x%x\n", __FUNCTION__,reg);
 	RTMP_IO_WRITE32(rt2x00dev, PCIE_REMAP_BASE4, 0x00);
 	printk("===>%s:MT7630   0x80100 = 0x%x\n", __FUNCTION__,reg);
-	//Set_BtDump_Proc(rt2x00dev,1);	 
+	//Set_BtDump_Proc(rt2x00dev,1);
 	rt2800_config_wcid(rt2x00dev, NULL, wcid);
 	__clear_bit(wcid - WCID_START, drv_data->sta_ids);
 
@@ -7776,7 +7776,7 @@ static void rt2800_init_bbp(struct rt2x00_dev *rt2x00dev)
 			if (rlt_bbp_is_ready(rt2x00dev)==1)
 			{
 				printk("rt2800_wait_bbp_rf_MT7630_ready not ready\n");
-				return -EACCES;
+				return;
 			}
 
 
@@ -9243,16 +9243,15 @@ int rt2800_enable_radio(struct rt2x00_dev *rt2x00dev)
 	 * Initialize MAC registers.
 	 */
 	printk("===>%s: \n", __FUNCTION__);
-	
-	
+
 	if (rt2x00_rt(rt2x00dev, MT7630))
 	{
 		if (unlikely(rt2800_wait_wpdma_ready(rt2x00dev) ||
-			     rt2800_init_registers(rt2x00dev) ||
-			     rt2800_init_bbp(rt2x00dev) 
-			     /*||rt2800_init_rfcsr(rt2x00dev)*/))
+			     rt2800_init_registers(rt2x00dev)))
+			/*||rt2800_init_rfcsr(rt2x00dev)*/
 			return -EIO;
-	} else {	 
+		rt2800_init_bbp(rt2x00dev);
+	} else {
 		if (unlikely(rt2800_wait_wpdma_ready(rt2x00dev) ||
 			     rt2800_init_registers(rt2x00dev)))
 			return -EIO;

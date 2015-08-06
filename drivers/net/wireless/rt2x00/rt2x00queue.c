@@ -938,16 +938,6 @@ void rt2x00queue_pause_queue(struct data_queue *queue)
 }
 EXPORT_SYMBOL_GPL(rt2x00queue_pause_queue);
 
-void rt2x00queue_pause_queue(struct data_queue *queue)
-{
-	if (!test_bit(DEVICE_STATE_PRESENT, &queue->rt2x00dev->flags) ||
-	    !test_bit(QUEUE_STARTED, &queue->flags) ||
-	    test_and_set_bit(QUEUE_PAUSED, &queue->flags))
-		return;
-
-	rt2x00queue_pause_queue_nocheck(queue);
-}
-
 void rt2x00queue_unpause_queue(struct data_queue *queue)
 {
 	if (!test_bit(DEVICE_STATE_PRESENT, &queue->rt2x00dev->flags) ||

@@ -757,9 +757,9 @@
 #define TX_ALC_VGA3			0x13C8
 #define TX_PWR_CFG_5		0x1384
 #define TX_PWR_CFG_6		0x1388
-#define TX_PWR_CFG_7		0x13D4
-#define TX_PWR_CFG_8		0x13D8
-#define TX_PWR_CFG_9		0x13DC
+//#define TX_PWR_CFG_7		0x13D4
+//#define TX_PWR_CFG_8		0x13D8
+//#define TX_PWR_CFG_9		0x13DC
 #define EXT_CCA_CFG			0x141c
 #define WMM_CTRL	0x0230
 
@@ -1903,7 +1903,7 @@
 /*
  * TX_STA_CNT0: TX Beacon count
  */
-#define TX_STA_CNT0			0x170c
+//#define TX_STA_CNT0			0x170c
 #define TX_STA_CNT0_TX_FAIL_COUNT	FIELD32(0x0000ffff)
 #define TX_STA_CNT0_TX_BEACON_COUNT	FIELD32(0xffff0000)
 

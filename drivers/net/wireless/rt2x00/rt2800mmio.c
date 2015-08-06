@@ -159,7 +159,7 @@ void rt2800mmio_fill_rxdone(struct queue_entry *entry,
 	struct rt2x00_dev *rt2x00dev;
 	RXINFO_STRUC *pRxInfo;
 	RXFCE_INFO *pRxFceInfo;
-	//printk("===>%s:MT7630\n", __FUNCTION__);
+
 	queue = entry->queue;
 	rt2x00dev = queue->rt2x00dev;
 
@@ -192,17 +192,16 @@ void rt2800mmio_fill_rxdone(struct queue_entry *entry,
 
 	if (rt2x00_rt(rt2x00dev, MT7630))
 	{
-		if (pRxInfo->Crc)
-		{
-			printk("crc error\n");
+		if (pRxInfo->Crc) {
+			pr_err("RX crc error\n");
 			rxdesc->flags |= RX_FLAG_FAILED_FCS_CRC;
 		}
-		rxdesc->cipher_status = pRxInfo->CipherErr;//rt2x00_get_field32(word, RXD_W3_CIPHER_ERROR);
+		rxdesc->cipher_status = pRxInfo->CipherErr;
 		if (rxdesc->cipher_status)
-			printk("crc RXD_W3_CIPHER_ERROR\n");
+			pr_err("MT7630 crc RXD_W3_CIPHER_ERROR\n");
 
 		if (pRxInfo->Decrypted) {
-			vend_dbg("Decrypted\n");
+			pr_debug("MT7630 Decrypted RX package\n");
 			/*
 			 * Hardware has stripped IV/EIV data from 802.11 frame during
 			 * decryption. Unfortunately the descriptor doesn't contain
@@ -225,12 +224,12 @@ void rt2800mmio_fill_rxdone(struct queue_entry *entry,
 		if (pRxInfo->MyBss)
 		{
 			rxdesc->dev_flags |= RXDONE_MY_BSS;
-			//printk("crc RXDONE_MY_BSS\n");
+			pr_debug("crc RXDONE_MY_BSS\n");
 		}
 		if (pRxInfo->L2PAD)
 		{
 			rxdesc->dev_flags |= RXDONE_L2PAD;
-			//printk("crc RXDONE_L2PAD\n");
+			pr_debug("crc RXDONE_L2PAD\n");
 		}
 		pRxInfo = NULL;
 		skb_pull(entry->skb, 4);

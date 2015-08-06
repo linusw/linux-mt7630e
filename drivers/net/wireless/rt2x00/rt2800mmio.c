@@ -36,6 +36,10 @@
 #include "rt2800lib.h"
 #include "rt2800mmio.h"
 
+void MT_2800pci_hex_dump(char *str, unsigned char *pSrcBufVA, u32 SrcBufLen);
+extern int AsicWaitPDMAIdle(struct rt2x00_dev *rt2x00dev, int round, int wait_us);
+extern void RTMPEnableRxTx(struct rt2x00_dev *rt2x00dev);
+
 /*
  * TX descriptor initialization
  */
@@ -234,10 +238,8 @@ void rt2800mmio_fill_rxdone(struct queue_entry *entry,
 		skb_pull(entry->skb, 4);
 		pRxInfo = NULL;
 	}  else {
-		if (rt2x00_get_field32(word, RXD_W3_CRC_ERROR)) {
-			printk("crc error\n");
-			rxdesc->flags |= RX_FLAG_FAILED_FCS_CRC;
-		}
+	if (rt2x00_get_field32(word, RXD_W3_CRC_ERROR))
+		rxdesc->flags |= RX_FLAG_FAILED_FCS_CRC;
 
 	/*
 	 * Unfortunately we don't know the cipher type used during
@@ -272,7 +274,7 @@ void rt2800mmio_fill_rxdone(struct queue_entry *entry,
 
 	if (rt2x00_get_field32(word, RXD_W3_L2PAD))
 		rxdesc->dev_flags |= RXDONE_L2PAD;
-
+	}
 	/*
 	 * Process the RXWI structure that is at the start of the buffer.
 	 */
@@ -483,14 +485,14 @@ void rt2800mmio_txstatus_tasklet(unsigned long data)
 }
 EXPORT_SYMBOL_GPL(rt2800mmio_txstatus_tasklet);
 
-static void rt2800mmio_tx8damdone_tasklet(unsigned long data)
+void rt2800mmio_tx8damdone_tasklet(unsigned long data)
 {
 	struct rt2x00_dev *rt2x00dev = (struct rt2x00_dev *)data;
 
 	if (RTMPHandleTxRing8DmaDoneInterrupt(rt2x00dev))
 		tasklet_schedule(&rt2x00dev->tx8damdone_tasklet);
 	else if (test_bit(DEVICE_STATE_ENABLED_RADIO, &rt2x00dev->flags)) {
-		rt2800pci_enable_interrupt(rt2x00dev, INT_SOURCE_CSR_7630_HCCA_DMA_DONE);
+		rt2800mmio_enable_interrupt(rt2x00dev, INT_SOURCE_CSR_7630_HCCA_DMA_DONE);
 	}
 }
 EXPORT_SYMBOL_GPL(rt2800mmio_tx8damdone_tasklet);
@@ -499,11 +501,12 @@ void rt2800mmio_pretbtt_tasklet(unsigned long data)
 {
 	struct rt2x00_dev *rt2x00dev = (struct rt2x00_dev *)data;
 	rt2x00lib_pretbtt(rt2x00dev);
-	if (test_bit(DEVICE_STATE_ENABLED_RADIO, &rt2x00dev->flags))
+	if (test_bit(DEVICE_STATE_ENABLED_RADIO, &rt2x00dev->flags)) {
 		if (!rt2x00_rt(rt2x00dev, MT7630))
 			rt2800mmio_enable_interrupt(rt2x00dev, INT_MASK_CSR_PRE_TBTT);
 		else
 			rt2800mmio_enable_interrupt(rt2x00dev, INT_MASK_CSR_7630_PRE_TBTT);
+	}
 }
 EXPORT_SYMBOL_GPL(rt2800mmio_pretbtt_tasklet);
 
@@ -537,11 +540,12 @@ void rt2800mmio_tbtt_tasklet(unsigned long data)
 		drv_data->tbtt_tick %= BCN_TBTT_OFFSET;
 	}
 
-	if (test_bit(DEVICE_STATE_ENABLED_RADIO, &rt2x00dev->flags))
+	if (test_bit(DEVICE_STATE_ENABLED_RADIO, &rt2x00dev->flags)) {
 		if (rt2x00_rt(rt2x00dev, MT7630))
 			rt2800mmio_enable_interrupt(rt2x00dev, INT_MASK_CSR_7630_TBTT);
 		else
 			rt2800mmio_enable_interrupt(rt2x00dev, INT_MASK_CSR_TBTT);
+	}
 }
 EXPORT_SYMBOL_GPL(rt2800mmio_tbtt_tasklet);
 
@@ -648,7 +652,7 @@ irqreturn_t rt2800mmio_interrupt(int irq, void *dev_instance)
 	if (rt2x00_rt(rt2x00dev, MT7630))
 	{
 		if (rt2x00_get_field32(reg, INT_SOURCE_CSR_7630_TX_FIFO_STATUS)) {
-			rt2800pci_txstatus_interrupt(rt2x00dev);
+			rt2800mmio_txstatus_interrupt(rt2x00dev);
 			/*
 			 * Never disable the TX_FIFO_STATUS interrupt.
 			 */
@@ -1003,6 +1007,7 @@ void rt2800mmio_clear_entry(struct queue_entry *entry)
 		 */
 		rt2x00mmio_register_write(rt2x00dev, RX_CRX_IDX,
 					  entry->entry_idx);
+		}
 	} else {
 		rt2x00_desc_read(entry_priv->desc, 1, &word);
 		rt2x00_set_field32(&word, TXD_W1_DMA_DONE, 1);

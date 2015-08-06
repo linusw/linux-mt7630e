@@ -29,10 +29,7 @@
 
 #include "rt2x00.h"
 #include "rt2x00pci.h"
-extern void MT76x0_WLAN_ChipOnOff(
-	struct rt2x00_dev *rt2x00dev,
-	int bOn,
-	int bResetWLAN);
+#include "rt2800lib.h" /* MT76x0_WLAN_ChipOnOff */
 
 /*
  * PCI driver handlers.

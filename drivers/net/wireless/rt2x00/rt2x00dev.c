@@ -29,7 +29,7 @@
 
 #include "rt2x00.h"
 #include "rt2x00lib.h"
-
+#include "rt2800lib.h" /* MT76x0_WLAN_ChipOnOff */
 
 #define WLAN_FUN_CTRL			0x0080
 #define MAC_CSR0			0x1000
@@ -61,14 +61,9 @@ static inline void rt2x00dev_pci_register_read(struct rt2x00_dev *rt2x00dev,
 static inline void rt2x00dev_pci_register_write(struct rt2x00_dev *rt2x00dev,
 					    const unsigned int offset,
 					    u32 value)
-{		
+{
 		writel(value, rt2x00dev->csr.base + offset);
 }
-
-extern void MT76x0_WLAN_ChipOnOff(
-	struct rt2x00_dev *rt2x00dev,
-	int bOn,
-	int bResetWLAN);
 
 /*
  * Utility functions.
@@ -1795,7 +1790,7 @@ void MT76x0_WLAN_ChipOnOff(
 			{
 				break;
 			}
-		}			
+		}
 		while (1);
 	}
 
@@ -1812,6 +1807,7 @@ void MT76x0_WLAN_ChipOnOff(
 		__FUNCTION__, g_WlanFunCtrl.word, WlanFunCtrl.word);
 #endif
 }
+EXPORT_SYMBOL_GPL(MT76x0_WLAN_ChipOnOff);
 
 int WaitForAsicReady(struct rt2x00_dev *rt2x00dev)
 {
@@ -1830,7 +1826,7 @@ int WaitForAsicReady(struct rt2x00_dev *rt2x00dev)
 
 	printk("%s(0x%x):AsicNotReady!\n",
 				__FUNCTION__, mac_val);
-	
+
 	return 0;
 }
 

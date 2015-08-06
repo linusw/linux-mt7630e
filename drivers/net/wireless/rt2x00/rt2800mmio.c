@@ -37,8 +37,6 @@
 #include "rt2800mmio.h"
 
 void MT_2800pci_hex_dump(char *str, unsigned char *pSrcBufVA, u32 SrcBufLen);
-extern int AsicWaitPDMAIdle(struct rt2x00_dev *rt2x00dev, int round, int wait_us);
-extern void RTMPEnableRxTx(struct rt2x00_dev *rt2x00dev);
 
 /*
  * TX descriptor initialization

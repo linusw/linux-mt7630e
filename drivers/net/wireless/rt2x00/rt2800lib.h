@@ -235,5 +235,7 @@ void MT76x0_WLAN_ChipOnOff(
 	struct rt2x00_dev *rt2x00dev,
 	int bOn,
 	int bResetWLAN);
+int AsicWaitPDMAIdle(struct rt2x00_dev *rt2x00dev, int round, int wait_us);
+void RTMPEnableRxTx(struct rt2x00_dev *rt2x00dev);
 
 #endif /* RT2800LIB_H */
